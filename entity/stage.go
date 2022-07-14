@@ -16,8 +16,8 @@ type Stage struct {
 	quadrantCanvas *pixelgl.Canvas
 }
 
-func NewStage(spritesheet pixel.Picture, scale float64, stagesConfigs embed.FS, stageNum int) *Stage {
-	bytes, err := stagesConfigs.ReadFile(fmt.Sprintf("assets/stages/%d.stage", stageNum))
+func NewStage(spritesheet pixel.Picture, scale float64, stagesConfigs embed.FS, stageName string) *Stage {
+	bytes, err := stagesConfigs.ReadFile(fmt.Sprintf("assets/stages/%s.stage", stageName))
 	if err != nil {
 		panic(err)
 	}

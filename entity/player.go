@@ -12,13 +12,13 @@ const PlayerSize = 16.0
 
 type Player struct {
 	Id
-	model          *core.Animation
-	pos            pixel.Vec
-	speed          float64
-	direction      Direction
-	shootingTicker *time.Ticker
-	shootingPeriod time.Duration
-	canShoot       bool
+	model            *core.Animation
+	pos              pixel.Vec
+	speed            float64
+	direction        Direction
+	currentBullet    *Bullet
+	lastShootingTime time.Time
+	shootingInterval time.Duration
 }
 
 func NewPlayer(spritesheet pixel.Picture) *Player {
@@ -26,14 +26,12 @@ func NewPlayer(spritesheet pixel.Picture) *Player {
 	p.pos = pixel.V(11*BlockSize*Scale, 3*BlockSize*Scale)
 	p.speed = 44 * Scale
 	p.direction = North
+	p.shootingInterval = time.Millisecond * 200
 	frames := []*pixel.Sprite{
 		pixel.NewSprite(spritesheet, pixel.R(0, 240, 16, 255)),
 		pixel.NewSprite(spritesheet, pixel.R(16, 240, 32, 255)),
 	}
 	p.model = core.NewAnimation(frames, 0.07)
-	p.shootingPeriod = time.Millisecond * 500
-	p.shootingTicker = time.NewTicker(p.shootingPeriod)
-	p.canShoot = true
 	return p
 }
 
@@ -66,24 +64,31 @@ func (p *Player) HandleMovementInput(win *pixelgl.Window, dt float64) (pixel.Vec
 }
 
 func (p *Player) HandleShootingInput(win *pixelgl.Window) *Bullet {
-	select {
-	case <-p.shootingTicker.C:
-		p.canShoot = true
-	default:
-	}
-
-	if p.canShoot && win.JustPressed(pixelgl.KeySpace) {
-		p.shootingTicker.Reset(p.shootingPeriod)
-		p.canShoot = false
-		return CreateBullet(p)
+	now := time.Now()
+	canShoot := now.Sub(p.lastShootingTime) > p.shootingInterval
+	noCurrentBullet := p.currentBullet == nil || p.currentBullet.IsDestroyed()
+	if noCurrentBullet && canShoot && win.JustPressed(pixelgl.KeySpace) {
+		bullet := CreateBullet(p)
+		p.currentBullet = bullet
+		p.lastShootingTime = now
+		return bullet
 	}
 
 	return nil
 }
 
-func (p *Player) Move(pos pixel.Vec, direction Direction) {
-	p.pos = pos
+func (p *Player) Move(canMove bool, pos pixel.Vec, direction Direction) {
 	p.direction = direction
+	if canMove {
+		p.pos = pos
+	} else {
+		// alignment
+		if p.direction.IsHorizontal() {
+			p.pos.Y = pos.Y
+		} else {
+			p.pos.X = pos.X
+		}
+	}
 }
 
 func (p *Player) Draw(win *pixelgl.Window, dt float64) {

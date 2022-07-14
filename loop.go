@@ -9,7 +9,7 @@ import (
 )
 
 type MainLoop struct {
-	currentStage  int
+	currentStage  string
 	spritesheet   pixel.Picture
 	stagesConfigs embed.FS
 	player        *entity.Player
@@ -20,7 +20,7 @@ type MainLoop struct {
 
 func CreateMainLoop(spritesheet pixel.Picture, stagesConfigs embed.FS) *MainLoop {
 	ml := new(MainLoop)
-	ml.currentStage = 1
+	ml.currentStage = "1"
 	ml.spritesheet = spritesheet
 	ml.stagesConfigs = stagesConfigs
 	ml.player = entity.NewPlayer(ml.spritesheet)
@@ -51,10 +51,7 @@ func (ml *MainLoop) Run(win *pixelgl.Window, dt float64) {
 			}
 		}
 
-		if !playerCanMove {
-			newPos = ml.player.Pos()
-		}
-		ml.player.Move(newPos, newDirection)
+		ml.player.Move(playerCanMove, newPos, newDirection)
 	}
 
 	// handle bullets movement
@@ -67,28 +64,32 @@ func (ml *MainLoop) Run(win *pixelgl.Window, dt float64) {
 			w, h = h, w
 		}
 		bulletRect := Rect(bullet.Pos(), w, h)
-		var collidedBlocks []*entity.Block
+		var collidedDestroyableBlocks []*entity.Block
+		collision := false
 		for _, blocks := range ml.stage.Blocks {
 			for _, block := range blocks {
 				if !block.Shootable() {
 					blockRect := Rect(block.Pos(), entity.BlockSize, entity.BlockSize)
 					intersect := bulletRect.Intersect(blockRect)
 					if intersect != pixel.ZR { // collision detected
-						collidedBlocks = append(collidedBlocks, block)
+						if block.Destroyable() {
+							collidedDestroyableBlocks = append(collidedDestroyableBlocks, block)
+						}
+						collision = true
 					}
 				}
 			}
 		}
 
-		if len(collidedBlocks) != 0 {
-			if len(collidedBlocks) > 2 {
+		if len(collidedDestroyableBlocks) != 0 {
+			if len(collidedDestroyableBlocks) > 2 {
 				panic("theoretically impossible")
 			}
 
-			firstCollidedBlock := collidedBlocks[0]
+			firstCollidedBlock := collidedDestroyableBlocks[0]
 			var secondCollidedBlock *entity.Block = nil
-			if len(collidedBlocks) == 2 {
-				secondCollidedBlock = collidedBlocks[1]
+			if len(collidedDestroyableBlocks) == 2 {
+				secondCollidedBlock = collidedDestroyableBlocks[1]
 			}
 			firstCollidedBlock.ProcessCollision(bullet, secondCollidedBlock)
 			if firstCollidedBlock.IsDestroyed() {
@@ -97,8 +98,10 @@ func (ml *MainLoop) Run(win *pixelgl.Window, dt float64) {
 			if secondCollidedBlock != nil && secondCollidedBlock.IsDestroyed() {
 				ml.stage.Destroy(secondCollidedBlock)
 			}
-
-			// remove bullet
+		}
+		// remove bullet
+		if collision {
+			bullet.Destroy()
 			ml.bullets[i] = ml.bullets[len(ml.bullets)-1]
 			ml.bullets = ml.bullets[:len(ml.bullets)-1]
 		}
@@ -112,9 +115,9 @@ func (ml *MainLoop) Run(win *pixelgl.Window, dt float64) {
 
 	// draw all
 	win.Clear(colornames.Black)
-	ml.DrawBullets(win)
-	ml.player.Draw(win, playerDt)
 	ml.stage.Draw(win)
+	ml.player.Draw(win, playerDt)
+	ml.DrawBullets(win)
 	win.Update()
 }
 

@@ -12,12 +12,13 @@ type Bullet struct {
 	pos       pixel.Vec
 	direction Direction
 	speed     float64
+	destroyed bool
 }
 
 func CreateBullet(origin Tank) *Bullet {
 	b := new(Bullet)
 	b.origin = origin
-	b.pos = b.origin.Pos()
+	b.pos = b.origin.Pos().Add(b.origin.Direction().Velocity(PlayerSize / 2 * Scale))
 	b.direction = b.origin.Direction()
 	b.speed = 100 * Scale
 	return b
@@ -34,4 +35,12 @@ func (b *Bullet) Pos() pixel.Vec {
 
 func (b *Bullet) Direction() Direction {
 	return b.direction
+}
+
+func (b *Bullet) IsDestroyed() bool {
+	return b.destroyed
+}
+
+func (b *Bullet) Destroy() {
+	b.destroyed = true
 }

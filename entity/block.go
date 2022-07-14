@@ -110,6 +110,10 @@ func (b *Block) Shootable() bool {
 	return b.shootable
 }
 
+func (b *Block) Destroyable() bool {
+	return b.destroyable
+}
+
 func (b *Block) IsDestroyed() bool {
 	return b.quadrants == emptyQuadrants
 }
