@@ -1,7 +1,6 @@
-package entity
+package game
 
 import (
-	"battlecity2/core"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 	"math"
@@ -12,7 +11,7 @@ const PlayerSize = 16.0
 
 type Player struct {
 	Id
-	model            *core.Animation
+	model            *Animation
 	pos              pixel.Vec
 	speed            float64
 	direction        Direction
@@ -31,7 +30,7 @@ func NewPlayer(spritesheet pixel.Picture) *Player {
 		pixel.NewSprite(spritesheet, pixel.R(0, 240, 16, 255)),
 		pixel.NewSprite(spritesheet, pixel.R(16, 240, 32, 255)),
 	}
-	p.model = core.NewAnimation(frames, 0.07)
+	p.model = NewAnimation(frames, 0.07)
 	return p
 }
 
@@ -66,7 +65,7 @@ func (p *Player) HandleMovementInput(win *pixelgl.Window, dt float64) (pixel.Vec
 func (p *Player) HandleShootingInput(win *pixelgl.Window) *Bullet {
 	now := time.Now()
 	canShoot := now.Sub(p.lastShootingTime) > p.shootingInterval
-	noCurrentBullet := p.currentBullet == nil || p.currentBullet.IsDestroyed()
+	noCurrentBullet := p.currentBullet == nil || p.currentBullet.destroyed
 	if noCurrentBullet && canShoot && win.JustPressed(pixelgl.KeySpace) {
 		bullet := CreateBullet(p)
 		p.currentBullet = bullet

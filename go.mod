@@ -1,4 +1,4 @@
-module battlecity2
+module battlecity
 
 go 1.18
 

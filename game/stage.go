@@ -1,4 +1,4 @@
-package entity
+package game
 
 import (
 	"embed"
@@ -14,7 +14,7 @@ type Stage struct {
 	blockSprites   map[string]*pixel.Sprite
 	quadrantCanvas *pixelgl.Canvas
 	batch          *pixel.Batch
-	needRedraw     bool
+	needsRedraw    bool
 }
 
 func NewStage(spritesheet *pixel.Picture, scale float64, stagesConfigs embed.FS, stageName string) *Stage {
@@ -79,21 +79,21 @@ func NewStage(spritesheet *pixel.Picture, scale float64, stagesConfigs embed.FS,
 		SteelBlock:  pixel.NewSprite(*spritesheet, pixel.R(256, 176, 264, 184)),
 		WaterBlock:  pixel.NewSprite(*spritesheet, pixel.R(256, 192, 264, 200)),
 	}
-	stage.needRedraw = true
+	stage.needsRedraw = true
 	return stage
 }
 
-func (s *Stage) NeedRedraw() {
-	s.needRedraw = true
+func (s *Stage) NeedsRedraw() {
+	s.needsRedraw = true
 }
 
 func (s *Stage) DestroyBlock(block *Block) {
 	s.Blocks[block.row][block.column] = Space(block.pos, block.row, block.column)
-	s.needRedraw = true
+	s.needsRedraw = true
 }
 
 func (s *Stage) Draw(win *pixelgl.Window) {
-	if !s.needRedraw {
+	if !s.needsRedraw {
 		s.batch.Draw(win)
 		return
 	}
@@ -101,8 +101,8 @@ func (s *Stage) Draw(win *pixelgl.Window) {
 	s.batch.Clear()
 	for _, blocks := range s.Blocks {
 		for _, block := range blocks {
-			if sprite, ok := s.blockSprites[block.Kind()]; ok {
-				sprite.Draw(s.batch, pixel.IM.Moved(block.Pos()).Scaled(block.Pos(), Scale))
+			if sprite, ok := s.blockSprites[block.kind]; ok {
+				sprite.Draw(s.batch, pixel.IM.Moved(block.pos).Scaled(block.pos, Scale))
 				if block.destroyable {
 					for i := 0; i < 2; i++ {
 						for j := 0; j < 2; j++ {
@@ -117,5 +117,5 @@ func (s *Stage) Draw(win *pixelgl.Window) {
 		}
 	}
 	s.batch.Draw(win)
-	s.needRedraw = false
+	s.needsRedraw = false
 }

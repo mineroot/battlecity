@@ -1,7 +1,6 @@
-package main
+package game
 
 import (
-	"battlecity2/entity"
 	"embed"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
@@ -12,9 +11,9 @@ type MainLoop struct {
 	currentStage  string
 	spritesheet   *pixel.Picture
 	stagesConfigs embed.FS
-	player        *entity.Player
-	stage         *entity.Stage
-	bullets       []*entity.Bullet
+	player        *Player
+	stage         *Stage
+	bullets       []*Bullet
 	bulletSprite  *pixel.Sprite
 }
 
@@ -23,7 +22,7 @@ func CreateMainLoop(spritesheet *pixel.Picture, stagesConfigs embed.FS) *MainLoo
 	ml.currentStage = "1"
 	ml.spritesheet = spritesheet
 	ml.stagesConfigs = stagesConfigs
-	ml.player = entity.NewPlayer(*ml.spritesheet)
+	ml.player = NewPlayer(*ml.spritesheet)
 	ml.bulletSprite = pixel.NewSprite(*ml.spritesheet, pixel.R(323, 154, 326, 150))
 	ml.loadCurrentStage()
 	return ml
@@ -36,12 +35,12 @@ func (ml *MainLoop) Run(win *pixelgl.Window, dt float64) {
 	if newPos != ml.player.Pos() {
 		playerDt = dt
 		playerCanMove := true
-		playerRect := Rect(newPos, entity.PlayerSize, entity.PlayerSize)
+		playerRect := Rect(newPos, PlayerSize, PlayerSize)
 	outPlayer:
 		for _, blocks := range ml.stage.Blocks {
 			for _, block := range blocks {
-				if !block.Passable() {
-					blockRect := Rect(block.Pos(), entity.BlockSize, entity.BlockSize)
+				if !block.passable {
+					blockRect := Rect(block.pos, BlockSize, BlockSize)
 					intersect := playerRect.Intersect(blockRect)
 					if intersect != pixel.ZR { // collision detected
 						playerCanMove = false
@@ -59,20 +58,20 @@ func (ml *MainLoop) Run(win *pixelgl.Window, dt float64) {
 		bullet := ml.bullets[i]
 		bullet.Move(dt)
 
-		w, h := entity.BulletW, entity.BulletH
-		if bullet.Direction().IsHorizontal() {
+		w, h := BulletW, BulletH
+		if bullet.direction.IsHorizontal() {
 			w, h = h, w
 		}
-		bulletRect := Rect(bullet.Pos(), w, h)
-		var collidedDestroyableBlocks []*entity.Block
+		bulletRect := Rect(bullet.pos, w, h)
+		var collidedDestroyableBlocks []*Block
 		collision := false
 		for _, blocks := range ml.stage.Blocks {
 			for _, block := range blocks {
-				if !block.Shootable() {
-					blockRect := Rect(block.Pos(), entity.BlockSize, entity.BlockSize)
+				if !block.shootable {
+					blockRect := Rect(block.pos, BlockSize, BlockSize)
 					intersect := bulletRect.Intersect(blockRect)
 					if intersect != pixel.ZR { // collision detected
-						if block.Destroyable() {
+						if block.destroyable {
 							collidedDestroyableBlocks = append(collidedDestroyableBlocks, block)
 						}
 						collision = true
@@ -87,7 +86,7 @@ func (ml *MainLoop) Run(win *pixelgl.Window, dt float64) {
 			}
 
 			firstCollidedBlock := collidedDestroyableBlocks[0]
-			var secondCollidedBlock *entity.Block = nil
+			var secondCollidedBlock *Block = nil
 			if len(collidedDestroyableBlocks) == 2 {
 				secondCollidedBlock = collidedDestroyableBlocks[1]
 			}
@@ -98,7 +97,7 @@ func (ml *MainLoop) Run(win *pixelgl.Window, dt float64) {
 			if secondCollidedBlock != nil && secondCollidedBlock.IsDestroyed() {
 				ml.stage.DestroyBlock(secondCollidedBlock)
 			}
-			ml.stage.NeedRedraw()
+			ml.stage.NeedsRedraw()
 		}
 		// remove bullet
 		if collision {
@@ -125,18 +124,18 @@ func (ml *MainLoop) Run(win *pixelgl.Window, dt float64) {
 
 func (ml *MainLoop) DrawBullets(win *pixelgl.Window) {
 	for _, bullet := range ml.bullets {
-		m := pixel.IM.Moved(bullet.Pos()).
-			Scaled(bullet.Pos(), entity.Scale).
-			Rotated(bullet.Pos(), bullet.Direction().Angle())
+		m := pixel.IM.Moved(bullet.pos).
+			Scaled(bullet.pos, Scale).
+			Rotated(bullet.pos, bullet.direction.Angle())
 		ml.bulletSprite.Draw(win, m)
 	}
 }
 
 func Rect(pos pixel.Vec, w float64, h float64) pixel.Rect {
-	w, h = w*entity.Scale/2, h*entity.Scale/2
+	w, h = w*Scale/2, h*Scale/2
 	return pixel.R(pos.X-w, pos.Y-h, pos.X+w, pos.Y+h)
 }
 
 func (ml *MainLoop) loadCurrentStage() {
-	ml.stage = entity.NewStage(ml.spritesheet, entity.Scale, ml.stagesConfigs, ml.currentStage)
+	ml.stage = NewStage(ml.spritesheet, Scale, ml.stagesConfigs, ml.currentStage)
 }

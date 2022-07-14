@@ -1,6 +1,7 @@
 package main
 
 import (
+	"battlecity/game"
 	"embed"
 	"fmt"
 	"image"
@@ -47,7 +48,7 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
-	ml := CreateMainLoop(&spritesheet, stagesConfigs)
+	ml := game.CreateMainLoop(&spritesheet, stagesConfigs)
 
 	secondTick := time.Tick(time.Second)
 	frames := 0

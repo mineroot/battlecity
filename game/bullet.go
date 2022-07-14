@@ -1,4 +1,4 @@
-package entity
+package game
 
 import "github.com/faiface/pixel"
 
@@ -27,18 +27,6 @@ func CreateBullet(origin Tank) *Bullet {
 func (b *Bullet) Move(dt float64) {
 	speed := b.speed * dt
 	b.pos = b.pos.Add(b.direction.Velocity(speed))
-}
-
-func (b *Bullet) Pos() pixel.Vec {
-	return b.pos
-}
-
-func (b *Bullet) Direction() Direction {
-	return b.direction
-}
-
-func (b *Bullet) IsDestroyed() bool {
-	return b.destroyed
 }
 
 func (b *Bullet) Destroy() {

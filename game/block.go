@@ -1,4 +1,4 @@
-package entity
+package game
 
 import (
 	"github.com/faiface/pixel"
@@ -87,33 +87,6 @@ func Space(pos pixel.Vec, row, column int) *Block {
 	return block
 }
 
-func (b *Block) Row() int {
-	return b.row
-}
-
-func (b *Block) Column() int {
-	return b.column
-}
-
-func (b *Block) Pos() pixel.Vec {
-	return b.pos
-}
-
-func (b *Block) Kind() string {
-	return b.kind
-}
-func (b *Block) Passable() bool {
-	return b.passable
-}
-
-func (b *Block) Shootable() bool {
-	return b.shootable
-}
-
-func (b *Block) Destroyable() bool {
-	return b.destroyable
-}
-
 func (b *Block) IsDestroyed() bool {
 	return b.quadrants == emptyQuadrants
 }
@@ -145,7 +118,7 @@ func (b *Block) ProcessCollision(bullet *Bullet, sb *Block) {
 	if sb == nil {
 		sb = fb
 	}
-	switch bullet.Direction() {
+	switch bullet.direction {
 	case North:
 		y := 0
 		if !fb.quadrants[0][0] && !fb.quadrants[1][0] && !sb.quadrants[0][0] && !sb.quadrants[1][0] {
