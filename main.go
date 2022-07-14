@@ -20,7 +20,9 @@ func loadPicture(path string) (pixel.Picture, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
 	img, _, err := image.Decode(file)
 	if err != nil {
 		return nil, err
@@ -45,7 +47,7 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
-	ml := CreateMainLoop(spritesheet, stagesConfigs)
+	ml := CreateMainLoop(&spritesheet, stagesConfigs)
 
 	secondTick := time.Tick(time.Second)
 	frames := 0

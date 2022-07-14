@@ -10,7 +10,7 @@ import (
 
 type MainLoop struct {
 	currentStage  string
-	spritesheet   pixel.Picture
+	spritesheet   *pixel.Picture
 	stagesConfigs embed.FS
 	player        *entity.Player
 	stage         *entity.Stage
@@ -18,13 +18,13 @@ type MainLoop struct {
 	bulletSprite  *pixel.Sprite
 }
 
-func CreateMainLoop(spritesheet pixel.Picture, stagesConfigs embed.FS) *MainLoop {
+func CreateMainLoop(spritesheet *pixel.Picture, stagesConfigs embed.FS) *MainLoop {
 	ml := new(MainLoop)
 	ml.currentStage = "1"
 	ml.spritesheet = spritesheet
 	ml.stagesConfigs = stagesConfigs
-	ml.player = entity.NewPlayer(ml.spritesheet)
-	ml.bulletSprite = pixel.NewSprite(ml.spritesheet, pixel.R(323, 154, 326, 150))
+	ml.player = entity.NewPlayer(*ml.spritesheet)
+	ml.bulletSprite = pixel.NewSprite(*ml.spritesheet, pixel.R(323, 154, 326, 150))
 	ml.loadCurrentStage()
 	return ml
 }
@@ -93,11 +93,12 @@ func (ml *MainLoop) Run(win *pixelgl.Window, dt float64) {
 			}
 			firstCollidedBlock.ProcessCollision(bullet, secondCollidedBlock)
 			if firstCollidedBlock.IsDestroyed() {
-				ml.stage.Destroy(firstCollidedBlock)
+				ml.stage.DestroyBlock(firstCollidedBlock)
 			}
 			if secondCollidedBlock != nil && secondCollidedBlock.IsDestroyed() {
-				ml.stage.Destroy(secondCollidedBlock)
+				ml.stage.DestroyBlock(secondCollidedBlock)
 			}
+			ml.stage.NeedRedraw()
 		}
 		// remove bullet
 		if collision {
@@ -113,6 +114,7 @@ func (ml *MainLoop) Run(win *pixelgl.Window, dt float64) {
 		ml.bullets = append(ml.bullets, playerBullet)
 	}
 
+	_ = playerDt
 	// draw all
 	win.Clear(colornames.Black)
 	ml.stage.Draw(win)

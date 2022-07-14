@@ -11,12 +11,13 @@ import (
 
 type Stage struct {
 	Blocks         [30][30]*Block
-	spritesheet    pixel.Picture
 	blockSprites   map[string]*pixel.Sprite
 	quadrantCanvas *pixelgl.Canvas
+	batch          *pixel.Batch
+	needRedraw     bool
 }
 
-func NewStage(spritesheet pixel.Picture, scale float64, stagesConfigs embed.FS, stageName string) *Stage {
+func NewStage(spritesheet *pixel.Picture, scale float64, stagesConfigs embed.FS, stageName string) *Stage {
 	bytes, err := stagesConfigs.ReadFile(fmt.Sprintf("assets/stages/%s.stage", stageName))
 	if err != nil {
 		panic(err)
@@ -71,31 +72,43 @@ func NewStage(spritesheet pixel.Picture, scale float64, stagesConfigs embed.FS, 
 
 	stage := new(Stage)
 	stage.Blocks = blocks
-	stage.spritesheet = spritesheet
+	stage.batch = pixel.NewBatch(&pixel.TrianglesData{}, *spritesheet)
 	stage.blockSprites = map[string]*pixel.Sprite{
-		BorderBlock: pixel.NewSprite(stage.spritesheet, pixel.R(368, 248, 376, 256)),
-		BrickBlock:  pixel.NewSprite(stage.spritesheet, pixel.R(256, 184, 264, 192)),
-		SteelBlock:  pixel.NewSprite(stage.spritesheet, pixel.R(256, 176, 264, 184)),
-		WaterBlock:  pixel.NewSprite(stage.spritesheet, pixel.R(256, 192, 264, 200)),
+		BorderBlock: pixel.NewSprite(*spritesheet, pixel.R(368, 248, 376, 256)),
+		BrickBlock:  pixel.NewSprite(*spritesheet, pixel.R(256, 184, 264, 192)),
+		SteelBlock:  pixel.NewSprite(*spritesheet, pixel.R(256, 176, 264, 184)),
+		WaterBlock:  pixel.NewSprite(*spritesheet, pixel.R(256, 192, 264, 200)),
 	}
+	stage.needRedraw = true
 	return stage
 }
 
-func (s *Stage) Destroy(block *Block) {
+func (s *Stage) NeedRedraw() {
+	s.needRedraw = true
+}
+
+func (s *Stage) DestroyBlock(block *Block) {
 	s.Blocks[block.row][block.column] = Space(block.pos, block.row, block.column)
+	s.needRedraw = true
 }
 
 func (s *Stage) Draw(win *pixelgl.Window) {
+	if !s.needRedraw {
+		s.batch.Draw(win)
+		return
+	}
+
+	s.batch.Clear()
 	for _, blocks := range s.Blocks {
 		for _, block := range blocks {
 			if sprite, ok := s.blockSprites[block.Kind()]; ok {
-				sprite.Draw(win, pixel.IM.Moved(block.Pos()).Scaled(block.Pos(), Scale))
+				sprite.Draw(s.batch, pixel.IM.Moved(block.Pos()).Scaled(block.Pos(), Scale))
 				if block.destroyable {
 					for i := 0; i < 2; i++ {
 						for j := 0; j < 2; j++ {
 							imd := block.QuadrantIMDraw(i, j)
 							if imd != nil {
-								imd.Draw(win)
+								imd.Draw(s.batch)
 							}
 						}
 					}
@@ -103,4 +116,6 @@ func (s *Stage) Draw(win *pixelgl.Window) {
 			}
 		}
 	}
+	s.batch.Draw(win)
+	s.needRedraw = false
 }
