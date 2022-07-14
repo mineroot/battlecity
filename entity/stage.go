@@ -57,7 +57,7 @@ func NewStage(spritesheet pixel.Picture, scale float64, stagesConfigs embed.FS, 
 					quadrantRects[i][j] = r
 				}
 			}
-			block.SetQuadrantRects(quadrantRects)
+			block.InitQuadrants(quadrantRects)
 		case SteelBlock:
 			block = Steel(pos)
 		case WaterBlock:
@@ -88,45 +88,20 @@ func NewStage(spritesheet pixel.Picture, scale float64, stagesConfigs embed.FS, 
 }
 
 func (s *Stage) Draw(win *pixelgl.Window, dt float64) {
-
 	for _, blocks := range s.Blocks {
 		for _, block := range blocks {
 			if sprite, ok := s.blockSprites[block.Kind()]; ok {
-
 				sprite.Draw(win, pixel.IM.Moved(block.Pos()).Scaled(block.Pos(), s.scale))
-
-				for i := 0; i < 2; i++ {
-					for j := 0; j < 2; j++ {
-						r := block.QuadrantRect(i, j)
-						if r != nil {
-
-							//quadrantCanvas := pixelgl.NewCanvas(*r)
-							//quadrantCanvas.Clear(colornames.Black)
-							//quadrantCanvas.SetBounds(*r)
-							//quadrantCanvas.Draw(win, pixel.IM.Moved(r.Center()))
+				if block.destroyable {
+					for i := 0; i < 2; i++ {
+						for j := 0; j < 2; j++ {
+							imd := block.QuadrantIMDraw(i, j)
+							if imd != nil {
+								imd.Draw(win)
+							}
 						}
 					}
 				}
-
-				//w, h := sprite.Frame().W(), sprite.Frame().H()
-				//shiftX, shiftY := w*s.scale/2, h*s.scale/2
-				//x, y := float64(column)*w*s.scale+shiftX, float64(30-row)*h*s.scale-shiftY
-				//pos := pixel.V(x, y)
-				//sprite.Draw(win, pixel.IM.Moved(pos).Scaled(pos, s.scale))
-				//if block.destroyable {
-				//	for i := 0; i < 2; i++ {
-				//		for j := 0; j < 2; j++ {
-				//			quadrant := block.Quadrant(i, j)
-				//			if !quadrant {
-				//				r := pixel.R(pos.X-shiftX, pos.Y-shiftY, pos.X, pos.Y)
-				//				r = r.Moved(pixel.V(shiftX*float64(i), shiftY*float64(j)))
-				//				quadrantCanvas.SetBounds(r)
-				//				quadrantCanvas.Clear(colornames.Black)
-				//				quadrantCanvas.Draw(win, pixel.IM.Moved(r.Center()))
-				//			}
-				//		}
-				//	}
-				//}
 			}
 		}
 	}

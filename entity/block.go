@@ -2,6 +2,7 @@ package entity
 
 import (
 	"github.com/faiface/pixel"
+	"github.com/faiface/pixel/imdraw"
 )
 
 const (
@@ -14,13 +15,13 @@ const (
 )
 
 type Block struct {
-	kind          string
-	destroyable   bool // can bullet destroy it
-	passable      bool // can tank pass through it
-	shootable     bool // can bullet pass through it
-	pos           pixel.Vec
-	quadrants     [2][2]bool
-	quadrantRects [2][2]pixel.Rect
+	kind           string
+	destroyable    bool // can bullet destroy it
+	passable       bool // can tank pass through it
+	shootable      bool // can bullet pass through it
+	pos            pixel.Vec
+	quadrants      [2][2]bool
+	quadrantIMDraw [2][2]*imdraw.IMDraw
 }
 
 func Border(pos pixel.Vec) *Block {
@@ -74,13 +75,24 @@ func Space(pos pixel.Vec) *Block {
 	return block
 }
 
-func (b *Block) SetQuadrantRects(quadrantRects [2][2]pixel.Rect) {
-	b.quadrantRects = quadrantRects
+func (b *Block) InitQuadrants(rects [2][2]pixel.Rect) {
+	if !b.destroyable {
+		return
+	}
+	for i, rectsI := range rects {
+		for j, rect := range rectsI {
+			imd := imdraw.New(nil)
+			imd.Color = pixel.RGB(0, 0, 0)
+			imd.Push(rect.Min, rect.Max)
+			imd.Rectangle(0)
+			b.quadrantIMDraw[i][j] = imd
+		}
+	}
 }
 
-func (b *Block) QuadrantRect(i, j int) *pixel.Rect {
+func (b *Block) QuadrantIMDraw(i, j int) *imdraw.IMDraw {
 	if !b.quadrants[i][j] {
-		return &b.quadrantRects[i][j]
+		return b.quadrantIMDraw[i][j]
 	}
 	return nil
 }
