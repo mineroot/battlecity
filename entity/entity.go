@@ -6,6 +6,8 @@ import (
 	"math"
 )
 
+const Scale = 4.0
+
 type TankSide int
 
 const (
@@ -67,4 +69,12 @@ func (d Direction) Angle() float64 {
 	default:
 		panic("direction: unreachable statement")
 	}
+}
+
+func (d Direction) IsHorizontal() bool {
+	return math.Mod(float64(d), 2) == 1
+}
+
+func (d Direction) IsVertical() bool {
+	return !d.IsHorizontal()
 }

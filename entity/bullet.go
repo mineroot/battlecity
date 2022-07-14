@@ -2,21 +2,24 @@ package entity
 
 import "github.com/faiface/pixel"
 
+const (
+	BulletW = 3.0
+	BulletH = 4.0
+)
+
 type Bullet struct {
-	scale     float64
 	origin    Tank
 	pos       pixel.Vec
 	direction Direction
 	speed     float64
 }
 
-func CreateBullet(origin Tank, scale float64) *Bullet {
+func CreateBullet(origin Tank) *Bullet {
 	b := new(Bullet)
-	b.scale = scale
 	b.origin = origin
 	b.pos = b.origin.Pos()
 	b.direction = b.origin.Direction()
-	b.speed = 100 * b.scale
+	b.speed = 100 * Scale
 	return b
 }
 

@@ -14,7 +14,6 @@ type Player struct {
 	Id
 	model          *core.Animation
 	pos            pixel.Vec
-	scale          float64
 	speed          float64
 	direction      Direction
 	shootingTicker *time.Ticker
@@ -22,18 +21,17 @@ type Player struct {
 	canShoot       bool
 }
 
-func NewPlayer(spritesheet pixel.Picture, scale float64) *Player {
+func NewPlayer(spritesheet pixel.Picture) *Player {
 	p := new(Player)
-	p.scale = scale
-	p.pos = pixel.V(11*BlockSize*p.scale, 3*BlockSize*p.scale)
-	p.speed = 44 * p.scale
+	p.pos = pixel.V(11*BlockSize*Scale, 3*BlockSize*Scale)
+	p.speed = 44 * Scale
 	p.direction = North
 	frames := []*pixel.Sprite{
 		pixel.NewSprite(spritesheet, pixel.R(0, 240, 16, 255)),
 		pixel.NewSprite(spritesheet, pixel.R(16, 240, 32, 255)),
 	}
 	p.model = core.NewAnimation(frames, 0.07)
-	p.shootingPeriod = time.Second * 2
+	p.shootingPeriod = time.Millisecond * 500
 	p.shootingTicker = time.NewTicker(p.shootingPeriod)
 	p.canShoot = true
 	return p
@@ -59,9 +57,9 @@ func (p *Player) HandleMovementInput(win *pixelgl.Window, dt float64) (pixel.Vec
 	if math.Mod(float64(newDirection+p.direction), 2) != 0 {
 		switch p.direction {
 		case North, South:
-			newPos.Y = mRound(math.Round, newPos.Y, p.scale*BlockSize)
+			newPos.Y = mRound(math.Round, newPos.Y, Scale*BlockSize)
 		case East, West:
-			newPos.X = mRound(math.Round, newPos.X, p.scale*BlockSize)
+			newPos.X = mRound(math.Round, newPos.X, Scale*BlockSize)
 		}
 	}
 	return newPos, newDirection
@@ -77,7 +75,7 @@ func (p *Player) HandleShootingInput(win *pixelgl.Window) *Bullet {
 	if p.canShoot && win.JustPressed(pixelgl.KeySpace) {
 		p.shootingTicker.Reset(p.shootingPeriod)
 		p.canShoot = false
-		return CreateBullet(p, p.scale)
+		return CreateBullet(p)
 	}
 
 	return nil
@@ -97,7 +95,7 @@ func (p *Player) Draw(win *pixelgl.Window, dt float64) {
 			ScaledXY(p.pos, pixel.V(-1, 1)).
 			Rotated(p.pos, math.Pi)
 	}
-	m = m.Scaled(p.pos, p.scale).
+	m = m.Scaled(p.pos, Scale).
 		Rotated(p.pos, p.direction.Angle())
 
 	frame.Draw(win, m)

@@ -14,7 +14,6 @@ type Stage struct {
 	spritesheet    pixel.Picture
 	blockSprites   map[string]*pixel.Sprite
 	quadrantCanvas *pixelgl.Canvas
-	scale          float64
 }
 
 func NewStage(spritesheet pixel.Picture, scale float64, stagesConfigs embed.FS, stageNum int) *Stage {
@@ -39,16 +38,15 @@ func NewStage(spritesheet pixel.Picture, scale float64, stagesConfigs embed.FS, 
 		row := n / 30
 		column := int(math.Mod(float64(n), 30))
 
-		w, h := 8.0, 8.0
-		shiftX, shiftY := w*scale/2, h*scale/2
-		x, y := float64(column)*w*scale+shiftX, float64(30-row)*h*scale-shiftY
+		shiftX, shiftY := BlockSize*scale/2, BlockSize*scale/2
+		x, y := float64(column)*BlockSize*scale+shiftX, float64(30-row)*BlockSize*scale-shiftY
 		pos := pixel.V(x, y)
 
 		switch blockSymbol {
 		case BorderBlock:
-			block = Border(pos)
+			block = Border(pos, row, column)
 		case BrickBlock:
-			block = Brick(pos)
+			block = Brick(pos, row, column)
 			var quadrantRects [2][2]pixel.Rect
 			for i := 0; i < 2; i++ {
 				for j := 0; j < 2; j++ {
@@ -59,11 +57,11 @@ func NewStage(spritesheet pixel.Picture, scale float64, stagesConfigs embed.FS, 
 			}
 			block.InitQuadrants(quadrantRects)
 		case SteelBlock:
-			block = Steel(pos)
+			block = Steel(pos, row, column)
 		case WaterBlock:
-			block = Water(pos)
+			block = Water(pos, row, column)
 		case SpaceBlock:
-			block = Space(pos)
+			block = Space(pos, row, column)
 		default:
 			log.Fatalf("field: invalid block symbol: %s", blockSymbol)
 		}
@@ -80,18 +78,18 @@ func NewStage(spritesheet pixel.Picture, scale float64, stagesConfigs embed.FS, 
 		SteelBlock:  pixel.NewSprite(stage.spritesheet, pixel.R(256, 176, 264, 184)),
 		WaterBlock:  pixel.NewSprite(stage.spritesheet, pixel.R(256, 192, 264, 200)),
 	}
-	//stage.quadrantCanvas = pixelgl.NewCanvas(pixel.ZR)
-	//stage.quadrantCanvas.Clear(colornames.Black)
-	stage.scale = scale
-
 	return stage
 }
 
-func (s *Stage) Draw(win *pixelgl.Window, dt float64) {
+func (s *Stage) Destroy(block *Block) {
+	s.Blocks[block.row][block.column] = Space(block.pos, block.row, block.column)
+}
+
+func (s *Stage) Draw(win *pixelgl.Window) {
 	for _, blocks := range s.Blocks {
 		for _, block := range blocks {
 			if sprite, ok := s.blockSprites[block.Kind()]; ok {
-				sprite.Draw(win, pixel.IM.Moved(block.Pos()).Scaled(block.Pos(), s.scale))
+				sprite.Draw(win, pixel.IM.Moved(block.Pos()).Scaled(block.Pos(), Scale))
 				if block.destroyable {
 					for i := 0; i < 2; i++ {
 						for j := 0; j < 2; j++ {
