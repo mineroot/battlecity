@@ -1,6 +1,7 @@
 package game
 
 import (
+	"github.com/google/uuid"
 	"math"
 	"math/rand"
 	"time"
@@ -9,12 +10,23 @@ import (
 	"github.com/faiface/pixel/pixelgl"
 )
 
+type BotType int
+
+const (
+	DefaultBot BotType = iota
+	RapidMovementBot
+	RapidShootingBot
+	ArmoredBot
+)
+
 type Bot struct {
 	Id
+	botType          BotType
 	model            *Animation
 	pos              pixel.Vec
 	speed            float64
 	direction        Direction
+	hp               int
 	currentBullet    *Bullet
 	lastShootingTime time.Time
 	shootingInterval time.Duration
@@ -22,19 +34,15 @@ type Bot struct {
 	stuckTime        time.Duration
 }
 
-func NewBot(spritesheet pixel.Picture, pos pixel.Vec) *Bot {
+func NewBot(spritesheet pixel.Picture, botType BotType, pos pixel.Vec) *Bot {
 	b := new(Bot)
+	b.id = uuid.New()
 	b.pos = pos
-	b.speed = 30 * Scale
 	b.direction = South
 	b.shootingInterval = time.Millisecond * 200
 	b.maxStuckInterval = time.Millisecond * 300
 	b.stuckTime = 0
-	frames := []*pixel.Sprite{
-		pixel.NewSprite(spritesheet, pixel.R(0, 240, 16, 255)),
-		pixel.NewSprite(spritesheet, pixel.R(16, 240, 32, 255)),
-	}
-	b.model = NewAnimation(frames, 0.07)
+	b.initBotType(spritesheet, botType)
 	return b
 }
 
@@ -133,4 +141,45 @@ func (b *Bot) Pos() pixel.Vec {
 
 func (b *Bot) Direction() Direction {
 	return b.direction
+}
+
+func (b *Bot) initBotType(spritesheet pixel.Picture, botType BotType) {
+	var frames []*pixel.Sprite
+	var speed float64
+	var hp int
+	b.botType = botType
+	switch b.botType {
+	case DefaultBot:
+		frames = []*pixel.Sprite{
+			pixel.NewSprite(spritesheet, pixel.R(128, 176, 144, 192)),
+			pixel.NewSprite(spritesheet, pixel.R(144, 176, 160, 192)),
+		}
+		speed = 30 * Scale
+		hp = 1
+	case RapidMovementBot:
+		frames = []*pixel.Sprite{
+			pixel.NewSprite(spritesheet, pixel.R(128, 160, 144, 176)),
+			pixel.NewSprite(spritesheet, pixel.R(144, 160, 160, 176)),
+		}
+		speed = 60 * Scale
+		hp = 1
+	case RapidShootingBot:
+		frames = []*pixel.Sprite{
+			pixel.NewSprite(spritesheet, pixel.R(128, 144, 144, 160)),
+			pixel.NewSprite(spritesheet, pixel.R(144, 144, 160, 160)),
+		}
+		speed = 30 * Scale
+		hp = 1
+	case ArmoredBot:
+		frames = []*pixel.Sprite{
+			pixel.NewSprite(spritesheet, pixel.R(128, 128, 144, 144)),
+			pixel.NewSprite(spritesheet, pixel.R(144, 128, 160, 144)),
+		}
+		speed = 30 * Scale
+		hp = 1
+	}
+
+	b.model = NewAnimation(frames, 0.07)
+	b.speed = speed
+	b.hp = hp
 }

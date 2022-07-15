@@ -6,6 +6,7 @@ import (
 
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
+	"github.com/google/uuid"
 )
 
 type Player struct {
@@ -21,13 +22,14 @@ type Player struct {
 
 func NewPlayer(spritesheet pixel.Picture) *Player {
 	p := new(Player)
+	p.id = uuid.New()
 	p.pos = pixel.V(11*BlockSize*Scale, 3*BlockSize*Scale)
 	p.speed = 44 * Scale
 	p.direction = North
 	p.shootingInterval = time.Millisecond * 200
 	frames := []*pixel.Sprite{
-		pixel.NewSprite(spritesheet, pixel.R(0, 240, 16, 255)),
-		pixel.NewSprite(spritesheet, pixel.R(16, 240, 32, 255)),
+		pixel.NewSprite(spritesheet, pixel.R(0, 240, 16, 256)),
+		pixel.NewSprite(spritesheet, pixel.R(16, 240, 32, 256)),
 	}
 	p.model = NewAnimation(frames, 0.07)
 	return p

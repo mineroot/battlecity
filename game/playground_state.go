@@ -16,11 +16,12 @@ type PlaygroundState struct {
 	stage            *Stage
 	stageLoaded      bool
 	player           *Player
-	bots             []*Bot
+	bots             map[uuid.UUID]*Bot
 	bullets          []*Bullet
 	bulletSprite     *pixel.Sprite
 	newBotInterval   time.Duration
 	lastBotCreatedAt time.Time
+	isPaused         bool
 }
 
 func NewPlaygroundState(config StateConfig) *PlaygroundState {
@@ -29,11 +30,18 @@ func NewPlaygroundState(config StateConfig) *PlaygroundState {
 	s.currentStage = "1"
 	s.bulletSprite = pixel.NewSprite(s.config.Spritesheet, pixel.R(323, 154, 326, 150))
 	s.player = NewPlayer(s.config.Spritesheet)
+	s.bots = make(map[uuid.UUID]*Bot)
 	s.newBotInterval = time.Second * 3
 	return s
 }
 
 func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
+	if win.JustPressed(pixelgl.KeyEscape) {
+		s.isPaused = !s.isPaused
+	}
+	if s.isPaused {
+		return nil
+	}
 	const maxBots = 4
 	tanks := s.Tanks()
 	now := time.Now()
@@ -59,7 +67,9 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 				}
 			}
 			if noIntersection {
-				s.bots = append(s.bots, NewBot(s.config.Spritesheet, newBotPos))
+				botType := rand.Intn(4)
+				newBot := NewBot(s.config.Spritesheet, BotType(botType), newBotPos)
+				s.bots[newBot.id] = newBot
 				break
 			}
 		}
@@ -114,7 +124,7 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 		tank.Move(movementResults[id], dt)
 	}
 
-	// handle bullets movement
+	// handle bullets movement & collision
 	for i := 0; i < len(s.bullets); i++ {
 		bullet := s.bullets[i]
 		bullet.Move(dt)
@@ -126,7 +136,7 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 		bulletRect := Rect(bullet.pos, w, h)
 		var collidedDestroyableBlocks []*Block
 		collision := false
-		for _, blocks := range s.stage.Blocks {
+		for _, blocks := range s.stage.Blocks { // check collision between bullet and blocks
 			for _, block := range blocks {
 				if !block.shootable {
 					blockRect := Rect(block.pos, BlockSize, BlockSize)
@@ -159,13 +169,57 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 				s.stage.DestroyBlock(secondCollidedBlock)
 			}
 			s.stage.NeedsRedraw()
+		} else { // check collision between bullet and tanks
+			for id, tank := range tanks {
+				if tank.Side() != bullet.origin.Side() {
+					tankRect := Rect(tank.Pos(), TankSize, TankSize)
+					intersect := bulletRect.Intersect(tankRect)
+					if intersect != pixel.ZR { // collision detected
+						if tank.Side() == bot {
+							botTank, _ := tank.(*Bot)
+							botTank.hp--
+							if botTank.hp <= 0 {
+								delete(s.bots, id)
+							}
+						} else {
+							// TODO: decrease player *hp* points
+						}
+						collision = true
+					}
+				}
+			}
 		}
-		// remove bullet
+		// check bullets collision
+		if !collision {
+			for j := 0; j < len(s.bullets); j++ {
+				bullet2 := s.bullets[j]
+				if i != j && bullet.origin.Side() != bullet2.origin.Side() {
+					w2, h2 := BulletW, BulletH
+					if bullet.direction.IsHorizontal() {
+						w2, h2 = h2, w2
+					}
+					bullet2Rect := Rect(bullet2.pos, w2, h2)
+					intersect := bulletRect.Intersect(bullet2Rect)
+					if intersect != pixel.ZR { // collision detected
+						collision = true
+						bullet2.Destroy()
+					}
+				}
+			}
+		}
+
 		if collision {
 			bullet.Destroy()
-			s.bullets[i] = s.bullets[len(s.bullets)-1]
-			s.bullets = s.bullets[:len(s.bullets)-1]
 		}
+		// remove destroyed bullets from slice
+		var tmpBullets []*Bullet
+		for _, b := range s.bullets {
+			if !b.destroyed {
+				tmpBullets = append(tmpBullets, b)
+			}
+		}
+		s.bullets = tmpBullets
+
 	}
 
 	// handle shooting
@@ -181,14 +235,17 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 
 func (s *PlaygroundState) Tanks() map[uuid.UUID]Tank {
 	tanks := make(map[uuid.UUID]Tank)
-	tanks[s.player.Id.Id()] = s.player
-	for _, b := range s.bots {
-		tanks[b.Id.Id()] = b
+	tanks[s.player.id] = s.player
+	for id, b := range s.bots {
+		tanks[id] = b
 	}
 	return tanks
 }
 
 func (s *PlaygroundState) Draw(win *pixelgl.Window, dt float64) {
+	if s.isPaused {
+		dt = 0
+	}
 	win.Clear(colornames.Black)
 	s.stage.Draw(win)
 	s.DrawBullets(win)

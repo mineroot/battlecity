@@ -35,7 +35,7 @@ func run() {
 	cfg := pixelgl.WindowConfig{
 		Title:  "Battle City 2022",
 		Bounds: pixel.R(0, 0, 1024, 960),
-		//VSync:  true,
+		VSync:  true,
 		//Monitor: monitor,
 	}
 	win, err := pixelgl.NewWindow(cfg)
