@@ -34,25 +34,41 @@ func NewPlaygroundState(config StateConfig) *PlaygroundState {
 }
 
 func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
+	const maxBots = 4
+	tanks := s.Tanks()
 	now := time.Now()
 	if !s.stageLoaded {
 		s.stage = NewStage(s.config.Spritesheet, Scale, s.config.StagesConfigs, s.currentStage)
 		s.stageLoaded = true
 	}
 
-	// handle bots creation & movement
+	// handle bots creation
 	canCreate := now.Sub(s.lastBotCreatedAt) > s.newBotInterval
-	if len(s.bots) < 4 && canCreate {
+	if len(s.bots) < maxBots && canCreate {
 		s.lastBotCreatedAt = now
-		randomColumn := float64(rand.Intn(27-3) + 3)
-		s.bots = append(s.bots, NewBot(s.config.Spritesheet, pixel.V(randomColumn*BlockSize*Scale, 27*BlockSize*Scale)))
+		for {
+			randomColumn := float64(rand.Intn(27-3) + 3)
+			newBotPos := pixel.V(randomColumn*BlockSize*Scale, 27*BlockSize*Scale)
+			newBotRect := Rect(newBotPos, TankSize, TankSize)
+			noIntersection := true
+			for _, tank := range tanks {
+				tankRect := Rect(tank.Pos(), TankSize, TankSize)
+				intersect := tankRect.Intersect(newBotRect)
+				if intersect != pixel.ZR {
+					noIntersection = false
+				}
+			}
+			if noIntersection {
+				s.bots = append(s.bots, NewBot(s.config.Spritesheet, newBotPos))
+				break
+			}
+		}
 	}
 
 	// handle *all* tanks movement
 	movementResults := make(map[uuid.UUID]*MovementResult)
-	tanks := s.Tanks()
 	for id, tank := range tanks {
-		newPos, newDirection := tank.HandleMovement(win, dt)
+		newPos, newDirection := tank.CalculateMovement(win, dt)
 		movementResults[id] = &MovementResult{newPos: newPos, direction: newDirection, canMove: true}
 	}
 	for _, blocks := range s.stage.Blocks {
@@ -74,28 +90,29 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 			}
 		}
 	}
+	for idI := range tanks {
+		movementResultI := movementResults[idI]
+		if !movementResultI.canMove { // already can't move - skip
+			continue
+		}
+		tankIRect := Rect(movementResultI.newPos, TankSize, TankSize)
+		for idJ, tankJ := range tanks {
+			if idI == idJ { // don't compare with itself - skip
+				continue
+			}
+			//movementResultJ := movementResults[idJ]
+			tankJRect := Rect(tankJ.Pos(), TankSize, TankSize)
+
+			intersect := tankIRect.Intersect(tankJRect)
+			if intersect != pixel.ZR { // collision detected
+				movementResultI.canMove = false
+			}
+		}
+	}
+
 	for id, tank := range tanks {
 		tank.Move(movementResults[id], dt)
 	}
-
-	//newPos, newDirection := s.player.HandleMovement(win, dt)
-	//if newPos != s.player.Pos() {
-	//	playerCanMove := true
-	//	playerRect := Rect(newPos, TankSize, TankSize)
-	//	for _, blocks := range s.stage.Blocks {
-	//		for _, block := range blocks {
-	//			if !block.passable {
-	//				blockRect := Rect(block.pos, BlockSize, BlockSize)
-	//				intersect := playerRect.Intersect(blockRect)
-	//				if intersect != pixel.ZR { // collision detected
-	//					playerCanMove = false
-	//				}
-	//			}
-	//		}
-	//	}
-	//
-	//	s.player.Move(playerCanMove, newPos, newDirection)
-	//}
 
 	// handle bullets movement
 	for i := 0; i < len(s.bullets); i++ {
@@ -151,10 +168,12 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 		}
 	}
 
-	// handle shooting input
-	playerBullet := s.player.HandleShootingInput(win)
-	if playerBullet != nil {
-		s.bullets = append(s.bullets, playerBullet)
+	// handle shooting
+	for _, tank := range tanks {
+		bullet := tank.Shoot(win, dt)
+		if bullet != nil {
+			s.bullets = append(s.bullets, bullet)
+		}
 	}
 
 	return nil
@@ -172,11 +191,11 @@ func (s *PlaygroundState) Tanks() map[uuid.UUID]Tank {
 func (s *PlaygroundState) Draw(win *pixelgl.Window, dt float64) {
 	win.Clear(colornames.Black)
 	s.stage.Draw(win)
+	s.DrawBullets(win)
 	s.player.Draw(win, dt)
 	for _, b := range s.bots {
 		b.Draw(win, dt)
 	}
-	s.DrawBullets(win)
 }
 
 func (s *PlaygroundState) DrawBullets(win *pixelgl.Window) {

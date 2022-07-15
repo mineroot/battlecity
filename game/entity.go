@@ -31,8 +31,9 @@ type Tank interface {
 	Side() TankSide
 	Pos() pixel.Vec
 	Direction() Direction
-	HandleMovement(win *pixelgl.Window, dt float64) (pixel.Vec, Direction)
+	CalculateMovement(win *pixelgl.Window, dt float64) (pixel.Vec, Direction)
 	Move(movementRes *MovementResult, dt float64)
+	Shoot(win *pixelgl.Window, dt float64) *Bullet
 }
 
 type MovementResult struct {

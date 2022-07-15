@@ -25,10 +25,10 @@ type Bot struct {
 func NewBot(spritesheet pixel.Picture, pos pixel.Vec) *Bot {
 	b := new(Bot)
 	b.pos = pos
-	b.speed = 44 * Scale
+	b.speed = 30 * Scale
 	b.direction = South
 	b.shootingInterval = time.Millisecond * 200
-	b.maxStuckInterval = time.Millisecond * 200
+	b.maxStuckInterval = time.Millisecond * 300
 	b.stuckTime = 0
 	frames := []*pixel.Sprite{
 		pixel.NewSprite(spritesheet, pixel.R(0, 240, 16, 255)),
@@ -38,13 +38,14 @@ func NewBot(spritesheet pixel.Picture, pos pixel.Vec) *Bot {
 	return b
 }
 
-func (b *Bot) HandleMovement(_ *pixelgl.Window, dt float64) (pixel.Vec, Direction) {
+func (b *Bot) CalculateMovement(_ *pixelgl.Window, dt float64) (pixel.Vec, Direction) {
 	const (
-		directionChangeProb = 0.6 // 60% per second
+		directionChangeProb = 0.5 // 50% per second
 		turnProb            = 0.7 // 70% per direction change
 	)
 	newDirection := b.direction
 	if b.stuckTime > b.maxStuckInterval || directionChangeProb*dt > rand.Float64() {
+		b.stuckTime = 0
 		if turnProb > rand.Float64() {
 			var perpendicularDirections []Direction
 			if b.direction.IsHorizontal() {
@@ -78,20 +79,34 @@ func (b *Bot) HandleMovement(_ *pixelgl.Window, dt float64) (pixel.Vec, Directio
 	return newPos, newDirection
 }
 
-func (b *Bot) Move(movementRes *MovementResult, dt float64) { // TODO refactor (same as Player.Move)
+func (b *Bot) Move(movementRes *MovementResult, dt float64) {
 	b.direction = movementRes.direction
 	if movementRes.canMove {
 		b.pos = movementRes.newPos
-		b.stuckTime = 0
 	} else {
 		b.stuckTime += time.Duration(dt * float64(time.Second))
 		// alignment
 		if b.direction.IsHorizontal() {
-			b.pos.Y = movementRes.newPos.Y
+			b.pos = pixel.V(MRound(math.Round, b.pos.X, Scale*BlockSize), movementRes.newPos.Y)
 		} else {
-			b.pos.X = movementRes.newPos.X
+			b.pos = pixel.V(movementRes.newPos.X, MRound(math.Round, b.pos.Y, Scale*BlockSize))
 		}
 	}
+}
+
+func (b *Bot) Shoot(_ *pixelgl.Window, dt float64) *Bullet {
+	const shootProb = 1 // 100% per second
+	now := time.Now()
+	canShoot := now.Sub(b.lastShootingTime) > b.shootingInterval
+	noCurrentBullet := b.currentBullet == nil || b.currentBullet.destroyed
+	if noCurrentBullet && canShoot && shootProb*dt > rand.Float64() {
+		bullet := CreateBullet(b)
+		b.currentBullet = bullet
+		b.lastShootingTime = now
+		return bullet
+	}
+
+	return nil
 }
 
 func (b *Bot) Draw(win *pixelgl.Window, dt float64) {

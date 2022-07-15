@@ -33,7 +33,7 @@ func NewPlayer(spritesheet pixel.Picture) *Player {
 	return p
 }
 
-func (p *Player) HandleMovement(win *pixelgl.Window, dt float64) (pixel.Vec, Direction) {
+func (p *Player) CalculateMovement(win *pixelgl.Window, dt float64) (pixel.Vec, Direction) {
 	var newDirection Direction
 	if win.Pressed(pixelgl.KeyW) {
 		newDirection = North
@@ -60,7 +60,7 @@ func (p *Player) HandleMovement(win *pixelgl.Window, dt float64) (pixel.Vec, Dir
 	return newPos, newDirection
 }
 
-func (p *Player) HandleShootingInput(win *pixelgl.Window) *Bullet {
+func (p *Player) Shoot(win *pixelgl.Window, _ float64) *Bullet {
 	now := time.Now()
 	canShoot := now.Sub(p.lastShootingTime) > p.shootingInterval
 	noCurrentBullet := p.currentBullet == nil || p.currentBullet.destroyed
@@ -81,9 +81,9 @@ func (p *Player) Move(movementRes *MovementResult, _ float64) {
 	} else {
 		// alignment
 		if p.direction.IsHorizontal() {
-			p.pos.Y = movementRes.newPos.Y
+			p.pos = pixel.V(MRound(math.Round, p.pos.X, Scale*BlockSize), movementRes.newPos.Y)
 		} else {
-			p.pos.X = movementRes.newPos.X
+			p.pos = pixel.V(movementRes.newPos.X, MRound(math.Round, p.pos.Y, Scale*BlockSize))
 		}
 	}
 }
