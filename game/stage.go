@@ -18,7 +18,7 @@ type Stage struct {
 	needsRedraw    bool
 }
 
-func NewStage(spritesheet *pixel.Picture, scale float64, stagesConfigs embed.FS, stageName string) *Stage {
+func NewStage(spritesheet pixel.Picture, scale float64, stagesConfigs embed.FS, stageName string) *Stage {
 	bytes, err := stagesConfigs.ReadFile(fmt.Sprintf("assets/stages/%s.stage", stageName))
 	if err != nil {
 		panic(err)
@@ -73,12 +73,12 @@ func NewStage(spritesheet *pixel.Picture, scale float64, stagesConfigs embed.FS,
 
 	stage := new(Stage)
 	stage.Blocks = blocks
-	stage.batch = pixel.NewBatch(&pixel.TrianglesData{}, *spritesheet)
+	stage.batch = pixel.NewBatch(&pixel.TrianglesData{}, spritesheet)
 	stage.blockSprites = map[string]*pixel.Sprite{
-		BorderBlock: pixel.NewSprite(*spritesheet, pixel.R(368, 248, 376, 256)),
-		BrickBlock:  pixel.NewSprite(*spritesheet, pixel.R(256, 184, 264, 192)),
-		SteelBlock:  pixel.NewSprite(*spritesheet, pixel.R(256, 176, 264, 184)),
-		WaterBlock:  pixel.NewSprite(*spritesheet, pixel.R(256, 192, 264, 200)),
+		BorderBlock: pixel.NewSprite(spritesheet, pixel.R(368, 248, 376, 256)),
+		BrickBlock:  pixel.NewSprite(spritesheet, pixel.R(256, 184, 264, 192)),
+		SteelBlock:  pixel.NewSprite(spritesheet, pixel.R(256, 176, 264, 184)),
+		WaterBlock:  pixel.NewSprite(spritesheet, pixel.R(256, 192, 264, 200)),
 	}
 	stage.needsRedraw = true
 	return stage

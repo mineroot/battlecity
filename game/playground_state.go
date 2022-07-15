@@ -1,44 +1,46 @@
 package game
 
 import (
-	"embed"
-
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 	"golang.org/x/image/colornames"
 )
 
-type MainLoop struct {
-	currentStage  string
-	spritesheet   *pixel.Picture
-	stagesConfigs embed.FS
-	player        *Player
-	stage         *Stage
-	bullets       []*Bullet
-	bulletSprite  *pixel.Sprite
+type PlaygroundState struct {
+	config       StateConfig
+	currentStage string
+	stage        *Stage
+	stageLoaded  bool
+	player       *Player
+	bots         []*Bot
+	bullets      []*Bullet
+	bulletSprite *pixel.Sprite
 }
 
-func CreateMainLoop(spritesheet *pixel.Picture, stagesConfigs embed.FS) *MainLoop {
-	ml := new(MainLoop)
-	ml.currentStage = "1"
-	ml.spritesheet = spritesheet
-	ml.stagesConfigs = stagesConfigs
-	ml.player = NewPlayer(*ml.spritesheet)
-	ml.bulletSprite = pixel.NewSprite(*ml.spritesheet, pixel.R(323, 154, 326, 150))
-	ml.loadCurrentStage()
-	return ml
+func NewPlaygroundState(config StateConfig) *PlaygroundState {
+	s := new(PlaygroundState)
+	s.config = config
+	s.currentStage = "1"
+	s.bulletSprite = pixel.NewSprite(s.config.Spritesheet, pixel.R(323, 154, 326, 150))
+	s.player = NewPlayer(s.config.Spritesheet)
+	return s
 }
 
-func (ml *MainLoop) Run(win *pixelgl.Window, dt float64) {
+func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
+	if !s.stageLoaded {
+		s.stage = NewStage(s.config.Spritesheet, Scale, s.config.StagesConfigs, s.currentStage)
+		s.stageLoaded = true
+	}
+
 	// handle player movement
-	playerDt := 0.0
-	newPos, newDirection := ml.player.HandleMovementInput(win, dt)
-	if newPos != ml.player.Pos() {
-		playerDt = dt
+	//playerDt := 0.0
+	newPos, newDirection := s.player.HandleMovementInput(win, dt)
+	if newPos != s.player.Pos() {
+		//playerDt = dt
 		playerCanMove := true
 		playerRect := Rect(newPos, PlayerSize, PlayerSize)
 	outPlayer:
-		for _, blocks := range ml.stage.Blocks {
+		for _, blocks := range s.stage.Blocks {
 			for _, block := range blocks {
 				if !block.passable {
 					blockRect := Rect(block.pos, BlockSize, BlockSize)
@@ -51,12 +53,12 @@ func (ml *MainLoop) Run(win *pixelgl.Window, dt float64) {
 			}
 		}
 
-		ml.player.Move(playerCanMove, newPos, newDirection)
+		s.player.Move(playerCanMove, newPos, newDirection)
 	}
 
 	// handle bullets movement
-	for i := 0; i < len(ml.bullets); i++ {
-		bullet := ml.bullets[i]
+	for i := 0; i < len(s.bullets); i++ {
+		bullet := s.bullets[i]
 		bullet.Move(dt)
 
 		w, h := BulletW, BulletH
@@ -66,7 +68,7 @@ func (ml *MainLoop) Run(win *pixelgl.Window, dt float64) {
 		bulletRect := Rect(bullet.pos, w, h)
 		var collidedDestroyableBlocks []*Block
 		collision := false
-		for _, blocks := range ml.stage.Blocks {
+		for _, blocks := range s.stage.Blocks {
 			for _, block := range blocks {
 				if !block.shootable {
 					blockRect := Rect(block.pos, BlockSize, BlockSize)
@@ -93,49 +95,42 @@ func (ml *MainLoop) Run(win *pixelgl.Window, dt float64) {
 			}
 			firstCollidedBlock.ProcessCollision(bullet, secondCollidedBlock)
 			if firstCollidedBlock.IsDestroyed() {
-				ml.stage.DestroyBlock(firstCollidedBlock)
+				s.stage.DestroyBlock(firstCollidedBlock)
 			}
 			if secondCollidedBlock != nil && secondCollidedBlock.IsDestroyed() {
-				ml.stage.DestroyBlock(secondCollidedBlock)
+				s.stage.DestroyBlock(secondCollidedBlock)
 			}
-			ml.stage.NeedsRedraw()
+			s.stage.NeedsRedraw()
 		}
 		// remove bullet
 		if collision {
 			bullet.Destroy()
-			ml.bullets[i] = ml.bullets[len(ml.bullets)-1]
-			ml.bullets = ml.bullets[:len(ml.bullets)-1]
+			s.bullets[i] = s.bullets[len(s.bullets)-1]
+			s.bullets = s.bullets[:len(s.bullets)-1]
 		}
 	}
 
 	// handle shooting input
-	playerBullet := ml.player.HandleShootingInput(win)
+	playerBullet := s.player.HandleShootingInput(win)
 	if playerBullet != nil {
-		ml.bullets = append(ml.bullets, playerBullet)
+		s.bullets = append(s.bullets, playerBullet)
 	}
 
-	// draw all
-	win.Clear(colornames.Black)
-	ml.stage.Draw(win)
-	ml.player.Draw(win, playerDt)
-	ml.DrawBullets(win)
-	win.Update()
+	return nil
 }
 
-func (ml *MainLoop) DrawBullets(win *pixelgl.Window) {
-	for _, bullet := range ml.bullets {
+func (s *PlaygroundState) Draw(win *pixelgl.Window, dt float64) {
+	win.Clear(colornames.Black)
+	s.stage.Draw(win)
+	s.player.Draw(win, dt)
+	s.DrawBullets(win)
+}
+
+func (s *PlaygroundState) DrawBullets(win *pixelgl.Window) {
+	for _, bullet := range s.bullets {
 		m := pixel.IM.Moved(bullet.pos).
 			Scaled(bullet.pos, Scale).
 			Rotated(bullet.pos, bullet.direction.Angle())
-		ml.bulletSprite.Draw(win, m)
+		s.bulletSprite.Draw(win, m)
 	}
-}
-
-func Rect(pos pixel.Vec, w float64, h float64) pixel.Rect {
-	w, h = w*Scale/2, h*Scale/2
-	return pixel.R(pos.X-w, pos.Y-h, pos.X+w, pos.Y+h)
-}
-
-func (ml *MainLoop) loadCurrentStage() {
-	ml.stage = NewStage(ml.spritesheet, Scale, ml.stagesConfigs, ml.currentStage)
 }

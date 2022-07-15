@@ -45,7 +45,10 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
-	ml := game.CreateMainLoop(&spritesheet, stagesConfigs)
+	g := game.NewGame(game.StateConfig{
+		Spritesheet:   spritesheet,
+		StagesConfigs: stagesConfigs,
+	})
 
 	secondTick := time.Tick(time.Second)
 	frames := 0
@@ -54,7 +57,8 @@ func run() {
 		dt := time.Since(last).Seconds()
 		last = time.Now()
 
-		ml.Run(win, dt)
+		g.Run(win, dt)
+		win.Update()
 
 		frames++
 		select {

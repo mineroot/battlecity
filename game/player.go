@@ -55,9 +55,9 @@ func (p *Player) HandleMovementInput(win *pixelgl.Window, dt float64) (pixel.Vec
 	if math.Mod(float64(newDirection+p.direction), 2) != 0 {
 		switch p.direction {
 		case North, South:
-			newPos.Y = mRound(math.Round, newPos.Y, Scale*BlockSize)
+			newPos.Y = MRound(math.Round, newPos.Y, Scale*BlockSize)
 		case East, West:
-			newPos.X = mRound(math.Round, newPos.X, Scale*BlockSize)
+			newPos.X = MRound(math.Round, newPos.X, Scale*BlockSize)
 		}
 	}
 	return newPos, newDirection
@@ -92,6 +92,11 @@ func (p *Player) Move(canMove bool, pos pixel.Vec, direction Direction) {
 }
 
 func (p *Player) Draw(win *pixelgl.Window, dt float64) {
+	movementPressed := win.Pressed(pixelgl.KeyW) || win.Pressed(pixelgl.KeyD) ||
+		win.Pressed(pixelgl.KeyS) || win.Pressed(pixelgl.KeyA)
+	if !movementPressed {
+		dt = 0
+	}
 	frame := p.model.CurrentFrame(dt)
 
 	m := pixel.IM.Moved(p.pos)
@@ -107,7 +112,7 @@ func (p *Player) Draw(win *pixelgl.Window, dt float64) {
 }
 
 func (p *Player) Side() TankSide {
-	return Human
+	return human
 }
 
 func (p *Player) Pos() pixel.Vec {
@@ -116,8 +121,4 @@ func (p *Player) Pos() pixel.Vec {
 
 func (p *Player) Direction() Direction {
 	return p.direction
-}
-
-func mRound(rounder func(float64) float64, n float64, multiple float64) float64 {
-	return multiple * rounder(n/multiple)
 }
