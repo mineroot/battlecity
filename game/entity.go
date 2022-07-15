@@ -1,9 +1,10 @@
 package game
 
 import (
+	"math"
+
 	"github.com/faiface/pixel"
 	"github.com/google/uuid"
-	"math"
 )
 
 const Scale = 4.0

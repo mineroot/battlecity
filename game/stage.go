@@ -3,10 +3,11 @@ package game
 import (
 	"embed"
 	"fmt"
-	"github.com/faiface/pixel"
-	"github.com/faiface/pixel/pixelgl"
 	"log"
 	"math"
+
+	"github.com/faiface/pixel"
+	"github.com/faiface/pixel/pixelgl"
 )
 
 type Stage struct {

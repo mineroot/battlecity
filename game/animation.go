@@ -1,8 +1,9 @@
 package game
 
 import (
-	"github.com/faiface/pixel"
 	"math"
+
+	"github.com/faiface/pixel"
 )
 
 type Animation struct {

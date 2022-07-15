@@ -2,6 +2,7 @@ package game
 
 import (
 	"embed"
+
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 	"golang.org/x/image/colornames"
