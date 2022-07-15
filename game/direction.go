@@ -2,6 +2,7 @@ package game
 
 import (
 	"math"
+	"math/rand"
 
 	"github.com/faiface/pixel"
 )
@@ -51,4 +52,12 @@ func (d Direction) IsHorizontal() bool {
 
 func (d Direction) IsVertical() bool {
 	return !d.IsHorizontal()
+}
+
+func (d Direction) IsPerpendicular(d2 Direction) bool {
+	return math.Mod(float64(d2+d), 2) != 0
+}
+
+func RandomDirection() Direction {
+	return Direction(rand.Intn(4))
 }

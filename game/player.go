@@ -8,8 +8,6 @@ import (
 	"github.com/faiface/pixel/pixelgl"
 )
 
-const PlayerSize = 16.0
-
 type Player struct {
 	Id
 	model            *Animation
@@ -35,7 +33,7 @@ func NewPlayer(spritesheet pixel.Picture) *Player {
 	return p
 }
 
-func (p *Player) HandleMovementInput(win *pixelgl.Window, dt float64) (pixel.Vec, Direction) {
+func (p *Player) HandleMovement(win *pixelgl.Window, dt float64) (pixel.Vec, Direction) {
 	var newDirection Direction
 	if win.Pressed(pixelgl.KeyW) {
 		newDirection = North
@@ -51,8 +49,7 @@ func (p *Player) HandleMovementInput(win *pixelgl.Window, dt float64) (pixel.Vec
 	speed := p.speed * dt
 	newPos := p.pos.Add(newDirection.Velocity(speed))
 
-	// if direction changed by π/2 (i.g. from West to North, but not from South to North)
-	if math.Mod(float64(newDirection+p.direction), 2) != 0 {
+	if p.direction.IsPerpendicular(newDirection) {
 		switch p.direction {
 		case North, South:
 			newPos.Y = MRound(math.Round, newPos.Y, Scale*BlockSize)
@@ -77,16 +74,16 @@ func (p *Player) HandleShootingInput(win *pixelgl.Window) *Bullet {
 	return nil
 }
 
-func (p *Player) Move(canMove bool, pos pixel.Vec, direction Direction) {
-	p.direction = direction
-	if canMove {
-		p.pos = pos
+func (p *Player) Move(movementRes *MovementResult, _ float64) {
+	p.direction = movementRes.direction
+	if movementRes.canMove {
+		p.pos = movementRes.newPos
 	} else {
 		// alignment
 		if p.direction.IsHorizontal() {
-			p.pos.Y = pos.Y
+			p.pos.Y = movementRes.newPos.Y
 		} else {
-			p.pos.X = pos.X
+			p.pos.X = movementRes.newPos.X
 		}
 	}
 }

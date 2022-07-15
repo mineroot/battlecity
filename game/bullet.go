@@ -18,7 +18,7 @@ type Bullet struct {
 func CreateBullet(origin Tank) *Bullet {
 	b := new(Bullet)
 	b.origin = origin
-	b.pos = b.origin.Pos().Add(b.origin.Direction().Velocity(PlayerSize / 2 * Scale))
+	b.pos = b.origin.Pos().Add(b.origin.Direction().Velocity(TankSize / 2 * Scale))
 	b.direction = b.origin.Direction()
 	b.speed = 100 * Scale
 	return b
