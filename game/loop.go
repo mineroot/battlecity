@@ -113,7 +113,6 @@ func (ml *MainLoop) Run(win *pixelgl.Window, dt float64) {
 		ml.bullets = append(ml.bullets, playerBullet)
 	}
 
-	_ = playerDt
 	// draw all
 	win.Clear(colornames.Black)
 	ml.stage.Draw(win)

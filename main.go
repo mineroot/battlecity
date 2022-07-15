@@ -2,11 +2,11 @@ package main
 
 import (
 	"battlecity/game"
+	"bytes"
 	"embed"
 	"fmt"
 	"image"
 	_ "image/png"
-	"os"
 	"time"
 
 	"github.com/faiface/pixel"
@@ -16,15 +16,12 @@ import (
 //go:embed assets/stages/*
 var stagesConfigs embed.FS
 
-func loadPicture(path string) (pixel.Picture, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer func(file *os.File) {
-		_ = file.Close()
-	}(file)
-	img, _, err := image.Decode(file)
+//go:embed assets/spritesheet.png
+var spritesheetPng []byte
+
+func loadSpritesheet() (pixel.Picture, error) {
+	reader := bytes.NewReader(spritesheetPng)
+	img, _, err := image.Decode(reader)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +41,7 @@ func run() {
 		panic(err)
 	}
 
-	spritesheet, err := loadPicture("assets/spritesheet.png")
+	spritesheet, err := loadSpritesheet()
 	if err != nil {
 		panic(err)
 	}
