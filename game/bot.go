@@ -28,6 +28,7 @@ type Bot struct {
 	direction        Direction
 	hp               int
 	currentBullet    *Bullet
+	bulletSpeed      float64
 	lastShootingTime time.Time
 	shootingInterval time.Duration
 	maxStuckInterval time.Duration
@@ -108,7 +109,7 @@ func (b *Bot) Shoot(_ *pixelgl.Window, dt float64) *Bullet {
 	canShoot := now.Sub(b.lastShootingTime) > b.shootingInterval
 	noCurrentBullet := b.currentBullet == nil || b.currentBullet.destroyed
 	if noCurrentBullet && canShoot && shootProb*dt > rand.Float64() {
-		bullet := CreateBullet(b)
+		bullet := CreateBullet(b, b.bulletSpeed)
 		b.currentBullet = bullet
 		b.lastShootingTime = now
 		return bullet
@@ -145,7 +146,7 @@ func (b *Bot) Direction() Direction {
 
 func (b *Bot) initBotType(spritesheet pixel.Picture, botType BotType) {
 	var frames []*pixel.Sprite
-	var speed float64
+	var speed, bulletSpeed float64
 	var hp int
 	b.botType = botType
 	switch b.botType {
@@ -154,32 +155,32 @@ func (b *Bot) initBotType(spritesheet pixel.Picture, botType BotType) {
 			pixel.NewSprite(spritesheet, pixel.R(128, 176, 144, 192)),
 			pixel.NewSprite(spritesheet, pixel.R(144, 176, 160, 192)),
 		}
-		speed = 30 * Scale
+		speed, bulletSpeed = 30*Scale, 100*Scale
 		hp = 1
 	case RapidMovementBot:
 		frames = []*pixel.Sprite{
 			pixel.NewSprite(spritesheet, pixel.R(128, 160, 144, 176)),
 			pixel.NewSprite(spritesheet, pixel.R(144, 160, 160, 176)),
 		}
-		speed = 60 * Scale
+		speed, bulletSpeed = 60*Scale, 100*Scale
 		hp = 1
 	case RapidShootingBot:
 		frames = []*pixel.Sprite{
 			pixel.NewSprite(spritesheet, pixel.R(128, 144, 144, 160)),
 			pixel.NewSprite(spritesheet, pixel.R(144, 144, 160, 160)),
 		}
-		speed = 30 * Scale
+		speed, bulletSpeed = 30*Scale, 175*Scale
 		hp = 1
 	case ArmoredBot:
 		frames = []*pixel.Sprite{
 			pixel.NewSprite(spritesheet, pixel.R(128, 128, 144, 144)),
 			pixel.NewSprite(spritesheet, pixel.R(144, 128, 160, 144)),
 		}
-		speed = 30 * Scale
-		hp = 1
+		speed, bulletSpeed = 30*Scale, 100*Scale
+		hp = 4
 	}
 
 	b.model = NewAnimation(frames, 0.07)
-	b.speed = speed
+	b.speed, b.bulletSpeed = speed, bulletSpeed
 	b.hp = hp
 }

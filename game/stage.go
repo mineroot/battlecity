@@ -5,30 +5,41 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/rand"
 
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
+	"github.com/google/uuid"
+)
+
+const (
+	stageColumns = 30
+	stageRows    = 30
 )
 
 type Stage struct {
-	Blocks         [30][30]*Block
+	Blocks         [stageColumns][stageRows]*Block
 	blockSprites   map[string]*pixel.Sprite
 	quadrantCanvas *pixelgl.Canvas
 	batch          *pixel.Batch
 	needsRedraw    bool
+	botsPool       []BotType
+	botPoolIndex   int
 }
 
-func NewStage(spritesheet pixel.Picture, scale float64, stagesConfigs embed.FS, stageName string) *Stage {
-	bytes, err := stagesConfigs.ReadFile(fmt.Sprintf("assets/stages/%s.stage", stageName))
+func NewStage(spritesheet pixel.Picture, scale float64, stagesConfigs embed.FS, stageNum int) *Stage {
+	bytes, err := stagesConfigs.ReadFile(fmt.Sprintf("assets/stages/%d.stage", stageNum))
 	if err != nil {
 		panic(err)
 	}
 
 	data := string(bytes)
-	if len(data) != (30*31 - 1) {
+	// maxStageChars + new line chars
+	maxChars := stageColumns*stageRows + stageColumns
+	if len(data) != maxChars {
 		log.Fatalf("field: invalid stage file length: %d", len(data))
 	}
-	var blocks [30][30]*Block
+	var blocks [stageColumns][stageRows]*Block
 	var block *Block
 	n := 0
 	for _, ch := range data {
@@ -81,6 +92,7 @@ func NewStage(spritesheet pixel.Picture, scale float64, stagesConfigs embed.FS, 
 		WaterBlock:  pixel.NewSprite(spritesheet, pixel.R(256, 192, 264, 200)),
 	}
 	stage.needsRedraw = true
+	stage.initBotsPool(stageNum)
 	return stage
 }
 
@@ -119,4 +131,70 @@ func (s *Stage) Draw(win *pixelgl.Window) {
 	}
 	s.batch.Draw(win)
 	s.needsRedraw = false
+}
+
+func (s *Stage) CreateBot(tanks map[uuid.UUID]Tank, spritesheet pixel.Picture) *Bot {
+	for {
+		randomColumn := float64(rand.Intn(27-3) + 3)
+		newBotPos := pixel.V(randomColumn*BlockSize*Scale, 27*BlockSize*Scale)
+		newBotRect := Rect(newBotPos, TankSize, TankSize)
+		noIntersection := true
+		for _, tank := range tanks {
+			tankRect := Rect(tank.Pos(), TankSize, TankSize)
+			intersect := tankRect.Intersect(newBotRect)
+			if intersect != pixel.ZR {
+				noIntersection = false
+				break
+			}
+		}
+		if noIntersection {
+			if s.IsPoolEmpty() {
+				return nil
+			}
+			botType := s.botsPool[s.botPoolIndex]
+			s.botPoolIndex++
+			return NewBot(spritesheet, BotType(botType), newBotPos)
+		}
+	}
+}
+
+func (s *Stage) initBotsPool(stageNum int) {
+	// probability density function
+	var pdf [4]float64
+	avgBotsCount := 20
+	switch stageNum {
+	case 1:
+		pdf = [4]float64{0.88, 0.12, 0, 0}
+		avgBotsCount = 18
+	case 2:
+		pdf = [4]float64{0.7, 0.2, 0, 0.1}
+	case 3:
+		pdf = [4]float64{0.7, 0.2, 0, 0.1}
+	case 4:
+		pdf = [4]float64{0.1, 0.25, 0.5, 0.15}
+	default:
+		pdf = [4]float64{0.4, 0.25, 0.25, 0.1}
+	}
+	avgBotsCountDiff := rand.Intn(5) - 2 // [-2; 2]
+	botsCount := avgBotsCount + avgBotsCountDiff
+
+	// cumulative distribution function
+	cdf := make([]float64, 4)
+	cdf[0] = pdf[0]
+	for i := 1; i < 4; i++ {
+		cdf[i] = cdf[i-1] + pdf[i]
+	}
+
+	for i := 0; i < botsCount; i++ {
+		botType := DefaultBot
+		r := rand.Float64()
+		for r > cdf[botType] {
+			botType++
+		}
+		s.botsPool = append(s.botsPool, botType)
+	}
+}
+
+func (s *Stage) IsPoolEmpty() bool {
+	return s.botPoolIndex >= len(s.botsPool)
 }

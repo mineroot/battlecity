@@ -15,6 +15,7 @@ type Player struct {
 	pos              pixel.Vec
 	speed            float64
 	direction        Direction
+	bulletSpeed      float64
 	currentBullet    *Bullet
 	lastShootingTime time.Time
 	shootingInterval time.Duration
@@ -26,6 +27,7 @@ func NewPlayer(spritesheet pixel.Picture) *Player {
 	p.pos = pixel.V(11*BlockSize*Scale, 3*BlockSize*Scale)
 	p.speed = 44 * Scale
 	p.direction = North
+	p.bulletSpeed = 100 * Scale
 	p.shootingInterval = time.Millisecond * 200
 	frames := []*pixel.Sprite{
 		pixel.NewSprite(spritesheet, pixel.R(0, 240, 16, 256)),
@@ -67,7 +69,7 @@ func (p *Player) Shoot(win *pixelgl.Window, _ float64) *Bullet {
 	canShoot := now.Sub(p.lastShootingTime) > p.shootingInterval
 	noCurrentBullet := p.currentBullet == nil || p.currentBullet.destroyed
 	if noCurrentBullet && canShoot && win.JustPressed(pixelgl.KeySpace) {
-		bullet := CreateBullet(p)
+		bullet := CreateBullet(p, p.bulletSpeed)
 		p.currentBullet = bullet
 		p.lastShootingTime = now
 		return bullet

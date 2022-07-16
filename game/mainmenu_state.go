@@ -11,7 +11,7 @@ func NewMainMenuState(config StateConfig) *MainMenuState {
 }
 
 func (s *MainMenuState) Update(_ *pixelgl.Window, _ float64) State {
-	return NewPlaygroundState(s.config)
+	return NewStageTitleState(s.config, 1)
 }
 
 func (s *MainMenuState) Draw(_ *pixelgl.Window, _ float64) {

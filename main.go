@@ -10,8 +10,11 @@ import (
 	"math/rand"
 	"time"
 
+	"golang.org/x/image/font"
+
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
+	"github.com/golang/freetype/truetype"
 )
 
 //go:embed assets/stages/*
@@ -20,6 +23,9 @@ var stagesConfigs embed.FS
 //go:embed assets/spritesheet.png
 var spritesheetPng []byte
 
+//go:embed assets/PressStart.ttf
+var defaultFontTtf []byte
+
 func loadSpritesheet() (pixel.Picture, error) {
 	reader := bytes.NewReader(spritesheetPng)
 	img, _, err := image.Decode(reader)
@@ -27,6 +33,18 @@ func loadSpritesheet() (pixel.Picture, error) {
 		return nil, err
 	}
 	return pixel.PictureDataFromImage(img), nil
+}
+
+func loadFont() (font.Face, error) {
+	f, err := truetype.Parse(defaultFontTtf)
+	if err != nil {
+		return nil, err
+	}
+
+	return truetype.NewFace(f, &truetype.Options{
+		Size:              36,
+		GlyphCacheEntries: 1,
+	}), nil
 }
 
 func run() {
@@ -47,9 +65,12 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
+	defaultFont, err := loadFont()
 	g := game.NewGame(game.StateConfig{
 		Spritesheet:   spritesheet,
+		DefaultFont:   defaultFont,
 		StagesConfigs: stagesConfigs,
+		WindowBounds:  cfg.Bounds,
 	})
 
 	secondTick := time.Tick(time.Second)

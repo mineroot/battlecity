@@ -7,7 +7,7 @@ import (
 )
 
 const Scale = 4.0
-const TankSize = 16.0
+const TankSize = 16
 
 type TankSide int
 

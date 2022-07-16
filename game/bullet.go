@@ -15,12 +15,12 @@ type Bullet struct {
 	destroyed bool
 }
 
-func CreateBullet(origin Tank) *Bullet {
+func CreateBullet(origin Tank, speed float64) *Bullet {
 	b := new(Bullet)
 	b.origin = origin
 	b.pos = b.origin.Pos().Add(b.origin.Direction().Velocity(TankSize / 2 * Scale))
 	b.direction = b.origin.Direction()
-	b.speed = 100 * Scale
+	b.speed = speed
 	return b
 }
 

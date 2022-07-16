@@ -1,10 +1,11 @@
 package game
 
 import (
-	"math/rand"
+	"image/color"
 	"time"
 
 	"github.com/faiface/pixel"
+	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/google/uuid"
 	"golang.org/x/image/colornames"
@@ -12,66 +13,51 @@ import (
 
 type PlaygroundState struct {
 	config           StateConfig
-	currentStage     string
+	stageNum         int
 	stage            *Stage
-	stageLoaded      bool
 	player           *Player
 	bots             map[uuid.UUID]*Bot
 	bullets          []*Bullet
 	bulletSprite     *pixel.Sprite
 	newBotInterval   time.Duration
-	lastBotCreatedAt time.Time
+	botCreationTime  time.Time
+	stageClearedTime time.Time
 	isPaused         bool
 }
 
-func NewPlaygroundState(config StateConfig) *PlaygroundState {
+func NewPlaygroundState(config StateConfig, stageNum int) *PlaygroundState {
 	s := new(PlaygroundState)
 	s.config = config
-	s.currentStage = "1"
+	s.stageNum = stageNum
 	s.bulletSprite = pixel.NewSprite(s.config.Spritesheet, pixel.R(323, 154, 326, 150))
 	s.player = NewPlayer(s.config.Spritesheet)
 	s.bots = make(map[uuid.UUID]*Bot)
 	s.newBotInterval = time.Second * 3
+	s.stage = NewStage(s.config.Spritesheet, Scale, s.config.StagesConfigs, s.stageNum)
 	return s
 }
 
 func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
-	if win.JustPressed(pixelgl.KeyEscape) {
+	now := time.Now()
+	if s.isStageCleared() && now.Sub(s.stageClearedTime) >= (time.Second*3) {
+		return NewStageTitleState(s.config, s.stageNum+1)
+	}
+	if win.JustPressed(pixelgl.KeyEscape) && !s.isStageCleared() {
 		s.isPaused = !s.isPaused
 	}
 	if s.isPaused {
 		return nil
 	}
+
 	const maxBots = 4
 	tanks := s.Tanks()
-	now := time.Now()
-	if !s.stageLoaded {
-		s.stage = NewStage(s.config.Spritesheet, Scale, s.config.StagesConfigs, s.currentStage)
-		s.stageLoaded = true
-	}
 
 	// handle bots creation
-	canCreate := now.Sub(s.lastBotCreatedAt) > s.newBotInterval
+	canCreate := now.Sub(s.botCreationTime) > s.newBotInterval
 	if len(s.bots) < maxBots && canCreate {
-		s.lastBotCreatedAt = now
-		for {
-			randomColumn := float64(rand.Intn(27-3) + 3)
-			newBotPos := pixel.V(randomColumn*BlockSize*Scale, 27*BlockSize*Scale)
-			newBotRect := Rect(newBotPos, TankSize, TankSize)
-			noIntersection := true
-			for _, tank := range tanks {
-				tankRect := Rect(tank.Pos(), TankSize, TankSize)
-				intersect := tankRect.Intersect(newBotRect)
-				if intersect != pixel.ZR {
-					noIntersection = false
-				}
-			}
-			if noIntersection {
-				botType := rand.Intn(4)
-				newBot := NewBot(s.config.Spritesheet, BotType(botType), newBotPos)
-				s.bots[newBot.id] = newBot
-				break
-			}
+		s.botCreationTime = now
+		if newBot := s.stage.CreateBot(tanks, s.config.Spritesheet); newBot != nil {
+			s.bots[newBot.id] = newBot
 		}
 	}
 
@@ -110,7 +96,6 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 			if idI == idJ { // don't compare with itself - skip
 				continue
 			}
-			//movementResultJ := movementResults[idJ]
 			tankJRect := Rect(tankJ.Pos(), TankSize, TankSize)
 
 			intersect := tankIRect.Intersect(tankJRect)
@@ -230,6 +215,10 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 		}
 	}
 
+	if s.isStageCleared() && s.stageClearedTime.IsZero() {
+		s.stageClearedTime = now
+	}
+
 	return nil
 }
 
@@ -253,6 +242,11 @@ func (s *PlaygroundState) Draw(win *pixelgl.Window, dt float64) {
 	for _, b := range s.bots {
 		b.Draw(win, dt)
 	}
+	rightRect := imdraw.New(nil)
+	rightRect.Color = color.RGBA{R: 99, G: 99, B: 99, A: 1}
+	rightRect.Push(pixel.V(BlockSize*Scale*30, 0), pixel.V(BlockSize*Scale*32, BlockSize*Scale*30))
+	rightRect.Rectangle(0)
+	rightRect.Draw(win)
 }
 
 func (s *PlaygroundState) DrawBullets(win *pixelgl.Window) {
@@ -262,4 +256,8 @@ func (s *PlaygroundState) DrawBullets(win *pixelgl.Window) {
 			Rotated(bullet.pos, bullet.direction.Angle())
 		s.bulletSprite.Draw(win, m)
 	}
+}
+
+func (s *PlaygroundState) isStageCleared() bool {
+	return s.stage.IsPoolEmpty() && len(s.bots) == 0
 }

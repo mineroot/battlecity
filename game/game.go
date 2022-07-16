@@ -3,6 +3,8 @@ package game
 import (
 	"embed"
 
+	"golang.org/x/image/font"
+
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 )
@@ -14,7 +16,9 @@ type State interface {
 
 type StateConfig struct {
 	Spritesheet   pixel.Picture
+	DefaultFont   font.Face
 	StagesConfigs embed.FS
+	WindowBounds  pixel.Rect
 }
 
 type Game struct {
