@@ -1,6 +1,8 @@
 package game
 
 import (
+	"battlecity/game/utils"
+
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/google/uuid"
@@ -23,14 +25,14 @@ type Id struct {
 type Tank interface {
 	Side() TankSide
 	Pos() pixel.Vec
-	Direction() Direction
-	CalculateMovement(win *pixelgl.Window, dt float64) (pixel.Vec, Direction)
+	Direction() utils.Direction
+	CalculateMovement(win *pixelgl.Window, dt float64) (pixel.Vec, utils.Direction)
 	Move(movementRes *MovementResult, dt float64)
 	Shoot(win *pixelgl.Window, dt float64) *Bullet
 }
 
 type MovementResult struct {
 	newPos    pixel.Vec
-	direction Direction
+	direction utils.Direction
 	canMove   bool
 }

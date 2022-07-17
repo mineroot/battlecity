@@ -2,27 +2,34 @@ package game
 
 import (
 	"image/color"
+	"math"
 	"time"
 
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/google/uuid"
+
 	"golang.org/x/image/colornames"
 )
 
 type PlaygroundState struct {
-	config           StateConfig
-	stageNum         int
-	stage            *Stage
-	player           *Player
-	bots             map[uuid.UUID]*Bot
-	bullets          []*Bullet
-	bulletSprite     *pixel.Sprite
-	newBotInterval   time.Duration
-	botCreationTime  time.Time
-	stageClearedTime time.Time
-	isPaused         bool
+	config            StateConfig
+	stageNum          int
+	stage             *Stage
+	player            *Player
+	bots              map[uuid.UUID]*Bot
+	activeBonus       *Bonus
+	bullets           []*Bullet
+	bulletSprite      *pixel.Sprite
+	newBotInterval    time.Duration
+	botCreationTime   time.Time
+	stageClearedTime  time.Time
+	isPaused          bool
+	isTimeStopBonus   bool
+	timeStopDuration  time.Duration
+	isArmoredHQBonus  bool
+	armoredHQDuration time.Duration
 }
 
 func NewPlaygroundState(config StateConfig, stageNum int) *PlaygroundState {
@@ -33,7 +40,7 @@ func NewPlaygroundState(config StateConfig, stageNum int) *PlaygroundState {
 	s.player = NewPlayer(s.config.Spritesheet)
 	s.bots = make(map[uuid.UUID]*Bot)
 	s.newBotInterval = time.Second * 3
-	s.stage = NewStage(s.config.Spritesheet, Scale, s.config.StagesConfigs, s.stageNum)
+	s.stage = NewStage(s.config.Spritesheet, s.config.StagesConfigs, s.stageNum)
 	return s
 }
 
@@ -52,12 +59,16 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 	const maxBots = 4
 	tanks := s.Tanks()
 
+	s.player.Update(dt)
 	// handle bots creation
 	canCreate := now.Sub(s.botCreationTime) > s.newBotInterval
 	if len(s.bots) < maxBots && canCreate {
 		s.botCreationTime = now
 		if newBot := s.stage.CreateBot(tanks, s.config.Spritesheet); newBot != nil {
 			s.bots[newBot.id] = newBot
+			if newBot.isBonus {
+				s.activeBonus = nil
+			}
 		}
 	}
 
@@ -82,7 +93,6 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 						movementRes.canMove = false
 					}
 				}
-
 			}
 		}
 	}
@@ -105,8 +115,58 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 		}
 	}
 
+	if s.isTimeStopBonus {
+		s.timeStopDuration += time.Duration(dt * float64(time.Second))
+		if s.timeStopDuration > time.Second*10 {
+			s.isTimeStopBonus = false
+		}
+	}
+	if s.isArmoredHQBonus {
+		if s.armoredHQDuration == 0 {
+			s.stage.ArmorHQ()
+		}
+		s.armoredHQDuration += time.Duration(dt * float64(time.Second))
+		if s.armoredHQDuration >= time.Second*17 {
+			blinkPeriod := time.Millisecond * 250
+			delta := s.armoredHQDuration - (time.Second * 17)
+			if math.Mod(float64(delta/blinkPeriod), 2) == 0 {
+				if s.stage.isHQArmored {
+					s.stage.DisarmorHQ()
+				}
+			} else {
+				if !s.stage.isHQArmored {
+					s.stage.ArmorHQ()
+				}
+			}
+		}
+		if s.armoredHQDuration >= time.Second*20 {
+			s.isArmoredHQBonus = false
+		}
+	}
 	for id, tank := range tanks {
-		tank.Move(movementResults[id], dt)
+		canMove := tank.Side() == human || tank.Side() == bot && !s.isTimeStopBonus
+		if canMove {
+			tank.Move(movementResults[id], dt)
+		}
+	}
+
+	// handle bonus
+	if s.activeBonus != nil {
+		bonusR := Rect(s.activeBonus.pos, BonusSize, BonusSize)
+		playerR := Rect(s.player.pos, TankSize, TankSize)
+		if playerR.Intersect(bonusR) != pixel.ZR {
+			switch s.activeBonus.bonusType {
+			case ImmunityBonus:
+				s.player.MakeImmune(time.Second * 10)
+			case TimeStopBonus:
+				s.isTimeStopBonus = true
+				s.timeStopDuration = 0
+			case HQArmorBonus:
+				s.isArmoredHQBonus = true
+				s.armoredHQDuration = 0
+			}
+			s.activeBonus = nil
+		}
 	}
 
 	// handle bullets movement & collision
@@ -163,6 +223,10 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 						if tank.Side() == bot {
 							botTank, _ := tank.(*Bot)
 							botTank.hp--
+							if botTank.isBonus {
+								botTank.isBonus = false
+								s.activeBonus = NewBonus(s.config.Spritesheet, s.stage.Blocks)
+							}
 							if botTank.hp <= 0 {
 								delete(s.bots, id)
 							}
@@ -209,9 +273,12 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 
 	// handle shooting
 	for _, tank := range tanks {
-		bullet := tank.Shoot(win, dt)
-		if bullet != nil {
-			s.bullets = append(s.bullets, bullet)
+		canShoot := tank.Side() == human || tank.Side() == bot && !s.isTimeStopBonus
+		if canShoot {
+			bullet := tank.Shoot(win, dt)
+			if bullet != nil {
+				s.bullets = append(s.bullets, bullet)
+			}
 		}
 	}
 
@@ -232,15 +299,15 @@ func (s *PlaygroundState) Tanks() map[uuid.UUID]Tank {
 }
 
 func (s *PlaygroundState) Draw(win *pixelgl.Window, dt float64) {
-	if s.isPaused {
-		dt = 0
-	}
 	win.Clear(colornames.Black)
 	s.stage.Draw(win)
 	s.DrawBullets(win)
-	s.player.Draw(win, dt)
+	s.player.Draw(win, dt, s.isPaused)
 	for _, b := range s.bots {
-		b.Draw(win, dt)
+		b.Draw(win, dt, s.isPaused || s.isTimeStopBonus)
+	}
+	if s.activeBonus != nil {
+		s.activeBonus.Draw(win, dt)
 	}
 	rightRect := imdraw.New(nil)
 	rightRect.Color = color.RGBA{R: 99, G: 99, B: 99, A: 1}

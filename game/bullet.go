@@ -1,6 +1,10 @@
 package game
 
-import "github.com/faiface/pixel"
+import (
+	"battlecity/game/utils"
+
+	"github.com/faiface/pixel"
+)
 
 const (
 	BulletW = 3.0
@@ -10,7 +14,7 @@ const (
 type Bullet struct {
 	origin    Tank
 	pos       pixel.Vec
-	direction Direction
+	direction utils.Direction
 	speed     float64
 	destroyed bool
 }
