@@ -28,6 +28,8 @@ type RSide struct {
 	stageIcon       *pixel.Sprite
 	botIcon         *pixel.Sprite
 	atlas           *text.Atlas
+	stageTxt        *text.Text
+	livesTxt        *text.Text
 	data            RSideData
 }
 
@@ -46,26 +48,29 @@ func (r *RSide) Update(data RSideData) {
 	if r.data != data {
 		r.needsRedraw = true
 	}
+	if r.data.firstPlayerLives != data.firstPlayerLives {
+		r.livesTxt = text.New(pixel.V(
+			29*BlockSize*Scale+36,
+			10*BlockSize*Scale+30,
+		), r.atlas)
+		r.livesTxt.Color = colornames.Black
+		_, _ = fmt.Fprintln(r.livesTxt, fmt.Sprintf("%d", data.firstPlayerLives))
+	}
+	if r.data.stageNum != data.stageNum {
+		r.stageTxt = text.New(pixel.V(
+			29*BlockSize*Scale+36,
+			3*BlockSize*Scale+30,
+		), r.atlas)
+		r.stageTxt.Color = colornames.Black
+		_, _ = fmt.Fprintln(r.stageTxt, fmt.Sprintf("%d", data.stageNum))
+	}
 	r.data = data
 }
 
 func (r *RSide) Draw(win *pixelgl.Window) {
 	r.drawBatch(win)
-	livesTxt := text.New(pixel.V(
-		29*BlockSize*Scale+36,
-		10*BlockSize*Scale+30,
-	), r.atlas)
-	livesTxt.Color = colornames.Black
-	_, _ = fmt.Fprintln(livesTxt, fmt.Sprintf("%d", r.data.firstPlayerLives))
-	livesTxt.Draw(win, pixel.IM.Scaled(livesTxt.Orig, 0.91))
-
-	stageTxt := text.New(pixel.V(
-		29*BlockSize*Scale+36,
-		3*BlockSize*Scale+30,
-	), r.atlas)
-	stageTxt.Color = colornames.Black
-	_, _ = fmt.Fprintln(stageTxt, fmt.Sprintf("%d", r.data.stageNum))
-	stageTxt.Draw(win, pixel.IM.Scaled(stageTxt.Orig, 0.91))
+	r.livesTxt.Draw(win, pixel.IM.Scaled(r.livesTxt.Orig, 0.91))
+	r.stageTxt.Draw(win, pixel.IM.Scaled(r.stageTxt.Orig, 0.91))
 }
 
 func (r *RSide) drawBatch(win *pixelgl.Window) {

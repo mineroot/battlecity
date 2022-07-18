@@ -5,6 +5,7 @@
 - [ ] improve AI (better pathfinding to HQ)
 - [x] bonuses
 - [ ] block and tank destruction animations 
-- [ ] full game circle (main menu, stages loading, game over)
+- [ ] HQ drawing
+- [ ] full game circle (main menu, ~~stages loading~~, ~~playground~~, score board, game over)
 - [ ] sound effects
 - [ ] player two
