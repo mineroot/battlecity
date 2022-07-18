@@ -36,3 +36,8 @@ func (b *Bullet) Move(dt float64) {
 func (b *Bullet) Destroy() {
 	b.destroyed = true
 }
+
+func (b *Bullet) IsUpgraded() bool {
+	player, ok := b.origin.(*Player)
+	return ok && player.level == maxLevel
+}

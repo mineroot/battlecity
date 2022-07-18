@@ -1,12 +1,10 @@
 package game
 
 import (
-	"image/color"
 	"math"
 	"time"
 
 	"github.com/faiface/pixel"
-	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/google/uuid"
 
@@ -16,14 +14,16 @@ import (
 type PlaygroundState struct {
 	config            StateConfig
 	stageNum          int
+	rSide             *RSide
 	stage             *Stage
 	player            *Player
 	bots              map[uuid.UUID]*Bot
+	destroyedBots     []BotType
 	activeBonus       *Bonus
 	bullets           []*Bullet
 	bulletSprite      *pixel.Sprite
 	newBotInterval    time.Duration
-	botCreationTime   time.Time
+	newBotDuration    time.Duration
 	stageClearedTime  time.Time
 	isPaused          bool
 	isTimeStopBonus   bool
@@ -32,12 +32,19 @@ type PlaygroundState struct {
 	armoredHQDuration time.Duration
 }
 
-func NewPlaygroundState(config StateConfig, stageNum int) *PlaygroundState {
+func NewPlaygroundState(config StateConfig, stageNum int, player *Player) *PlaygroundState {
 	s := new(PlaygroundState)
 	s.config = config
+	s.rSide = NewRightSide(s.config.Spritesheet, s.config.DefaultFont)
 	s.stageNum = stageNum
 	s.bulletSprite = pixel.NewSprite(s.config.Spritesheet, pixel.R(323, 154, 326, 150))
-	s.player = NewPlayer(s.config.Spritesheet)
+	if player == nil {
+		s.player = NewPlayer(s.config.Spritesheet)
+		s.player.ResetLevel()
+	} else {
+		s.player = player
+	}
+	s.player.Respawn()
 	s.bots = make(map[uuid.UUID]*Bot)
 	s.newBotInterval = time.Second * 3
 	s.stage = NewStage(s.config.Spritesheet, s.config.StagesConfigs, s.stageNum)
@@ -47,7 +54,7 @@ func NewPlaygroundState(config StateConfig, stageNum int) *PlaygroundState {
 func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 	now := time.Now()
 	if s.isStageCleared() && now.Sub(s.stageClearedTime) >= (time.Second*3) {
-		return NewStageTitleState(s.config, s.stageNum+1)
+		return NewStageTitleState(s.config, s.stageNum+1, s.player)
 	}
 	if win.JustPressed(pixelgl.KeyEscape) && !s.isStageCleared() {
 		s.isPaused = !s.isPaused
@@ -61,14 +68,15 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 
 	s.player.Update(dt)
 	// handle bots creation
-	canCreate := now.Sub(s.botCreationTime) > s.newBotInterval
+	canCreate := s.newBotDuration > s.newBotInterval || (len(s.destroyedBots) == 0 && len(s.bots) == 0)
+	s.newBotDuration += time.Duration(dt * float64(time.Second))
 	if len(s.bots) < maxBots && canCreate {
-		s.botCreationTime = now
 		if newBot := s.stage.CreateBot(tanks, s.config.Spritesheet); newBot != nil {
 			s.bots[newBot.id] = newBot
 			if newBot.isBonus {
 				s.activeBonus = nil
 			}
+			s.newBotDuration = 0
 		}
 	}
 
@@ -150,24 +158,7 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 		}
 	}
 
-	// handle bonus
-	if s.activeBonus != nil {
-		bonusR := Rect(s.activeBonus.pos, BonusSize, BonusSize)
-		playerR := Rect(s.player.pos, TankSize, TankSize)
-		if playerR.Intersect(bonusR) != pixel.ZR {
-			switch s.activeBonus.bonusType {
-			case ImmunityBonus:
-				s.player.MakeImmune(time.Second * 10)
-			case TimeStopBonus:
-				s.isTimeStopBonus = true
-				s.timeStopDuration = 0
-			case HQArmorBonus:
-				s.isArmoredHQBonus = true
-				s.armoredHQDuration = 0
-			}
-			s.activeBonus = nil
-		}
-	}
+	s.bonusUpdate()
 
 	// handle bullets movement & collision
 	for i := 0; i < len(s.bullets); i++ {
@@ -187,7 +178,7 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 					blockRect := Rect(block.pos, BlockSize, BlockSize)
 					intersect := bulletRect.Intersect(blockRect)
 					if intersect != pixel.ZR { // collision detected
-						if block.destroyable {
+						if block.destroyable || (block.kind == SteelBlock && bullet.IsUpgraded()) {
 							collidedDestroyableBlocks = append(collidedDestroyableBlocks, block)
 						}
 						collision = true
@@ -207,10 +198,10 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 				secondCollidedBlock = collidedDestroyableBlocks[1]
 			}
 			firstCollidedBlock.ProcessCollision(bullet, secondCollidedBlock)
-			if firstCollidedBlock.IsDestroyed() {
+			if firstCollidedBlock.IsDestroyed() || bullet.IsUpgraded() {
 				s.stage.DestroyBlock(firstCollidedBlock)
 			}
-			if secondCollidedBlock != nil && secondCollidedBlock.IsDestroyed() {
+			if secondCollidedBlock != nil && (secondCollidedBlock.IsDestroyed() || bullet.IsUpgraded()) {
 				s.stage.DestroyBlock(secondCollidedBlock)
 			}
 			s.stage.NeedsRedraw()
@@ -228,17 +219,22 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 								s.activeBonus = NewBonus(s.config.Spritesheet, s.stage.Blocks)
 							}
 							if botTank.hp <= 0 {
-								delete(s.bots, id)
+								s.destroyBot(id)
 							}
-						} else {
-							// TODO: decrease player *hp* points
+						} else if !s.player.immune {
+							s.player.lives--
+							if s.player.lives < 0 {
+								// TODO game over
+							}
+							s.player.ResetLevel()
+							s.player.Respawn()
 						}
 						collision = true
 					}
 				}
 			}
 		}
-		// check bullets collision
+		// check collision between bullet and bullet
 		if !collision {
 			for j := 0; j < len(s.bullets); j++ {
 				bullet2 := s.bullets[j]
@@ -268,7 +264,6 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 			}
 		}
 		s.bullets = tmpBullets
-
 	}
 
 	// handle shooting
@@ -285,17 +280,13 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 	if s.isStageCleared() && s.stageClearedTime.IsZero() {
 		s.stageClearedTime = now
 	}
+	s.rSide.Update(RSideData{
+		stageNum:         s.stageNum,
+		firstPlayerLives: int(math.Max(float64(s.player.lives), 0)),
+		botsPullLen:      len(s.stage.botsPool) - s.stage.botPoolIndex,
+	})
 
 	return nil
-}
-
-func (s *PlaygroundState) Tanks() map[uuid.UUID]Tank {
-	tanks := make(map[uuid.UUID]Tank)
-	tanks[s.player.id] = s.player
-	for id, b := range s.bots {
-		tanks[id] = b
-	}
-	return tanks
 }
 
 func (s *PlaygroundState) Draw(win *pixelgl.Window, dt float64) {
@@ -309,11 +300,56 @@ func (s *PlaygroundState) Draw(win *pixelgl.Window, dt float64) {
 	if s.activeBonus != nil {
 		s.activeBonus.Draw(win, dt)
 	}
-	rightRect := imdraw.New(nil)
-	rightRect.Color = color.RGBA{R: 99, G: 99, B: 99, A: 1}
-	rightRect.Push(pixel.V(BlockSize*Scale*30, 0), pixel.V(BlockSize*Scale*32, BlockSize*Scale*30))
-	rightRect.Rectangle(0)
-	rightRect.Draw(win)
+	s.rSide.Draw(win)
+}
+
+func (s *PlaygroundState) bonusUpdate() {
+	if s.activeBonus != nil {
+		bonusR := Rect(s.activeBonus.pos, BonusSize, BonusSize)
+		playerR := Rect(s.player.pos, TankSize, TankSize)
+		if playerR.Intersect(bonusR) != pixel.ZR {
+			switch s.activeBonus.bonusType {
+			case ImmunityBonus:
+				s.player.MakeImmune(time.Second * 10)
+			case TimeStopBonus:
+				s.isTimeStopBonus = true
+				s.timeStopDuration = 0
+			case HQArmorBonus:
+				s.isArmoredHQBonus = true
+				s.armoredHQDuration = 0
+			case UpgradeBonus:
+				s.player.Upgrade()
+			case AnnihilationBonus:
+				s.annihilateBots()
+			case LifeBonus:
+				if s.player.lives < 9 {
+					s.player.lives++
+				}
+			}
+			s.activeBonus = nil
+		}
+	}
+}
+
+func (s *PlaygroundState) destroyBot(id uuid.UUID) {
+	s.destroyedBots = append(s.destroyedBots, s.bots[id].botType)
+	delete(s.bots, id)
+}
+
+func (s *PlaygroundState) annihilateBots() {
+	for id := range s.bots {
+		s.destroyBot(id)
+	}
+	s.newBotDuration = 0
+}
+
+func (s *PlaygroundState) Tanks() map[uuid.UUID]Tank {
+	tanks := make(map[uuid.UUID]Tank)
+	tanks[s.player.id] = s.player
+	for id, b := range s.bots {
+		tanks[id] = b
+	}
+	return tanks
 }
 
 func (s *PlaygroundState) DrawBullets(win *pixelgl.Window) {

@@ -11,8 +11,11 @@ import (
 	"github.com/google/uuid"
 )
 
+const maxLevel = 3
+
 type Player struct {
 	Id
+	spritesheet         pixel.Picture
 	model               *utils.Animation
 	immunityModel       *utils.Animation
 	pos                 pixel.Vec
@@ -22,26 +25,20 @@ type Player struct {
 	immunityDuration    time.Duration
 	maxImmunityDuration time.Duration
 	bulletSpeed         float64
-	currentBullet       *Bullet
+	currentBullet1      *Bullet
+	currentBullet2      *Bullet
 	lastShootingTime    time.Time
 	shootingInterval    time.Duration
+	level               int
+	lives               int
 }
 
 func NewPlayer(spritesheet pixel.Picture) *Player {
 	p := new(Player)
 	p.id = uuid.New()
-	p.Respawn()
+	p.spritesheet = spritesheet
+	p.lives = 2
 	p.shootingInterval = time.Millisecond * 200
-	p.model = utils.NewAnimation([]utils.AnimationFrame{
-		{
-			Frame:    pixel.NewSprite(spritesheet, pixel.R(0, 240, 16, 256)),
-			Duration: time.Microsecond * 66666,
-		},
-		{
-			Frame:    pixel.NewSprite(spritesheet, pixel.R(16, 240, 32, 256)),
-			Duration: time.Microsecond * 66666,
-		},
-	})
 	p.immunityModel = utils.NewAnimation([]utils.AnimationFrame{
 		{
 			Frame:    pixel.NewSprite(spritesheet, pixel.R(256, 96, 272, 112)),
@@ -67,12 +64,11 @@ func (p *Player) Update(dt float64) {
 }
 
 func (p *Player) Respawn() {
-	p.pos = pixel.V(11*BlockSize*Scale, 3*BlockSize*Scale)
-	p.speed = 44 * Scale
-	p.direction = utils.North
 	p.MakeImmune(time.Second * 3)
-	p.bulletSpeed = 100 * Scale
-	p.currentBullet = nil
+	p.pos = pixel.V(11*BlockSize*Scale, 3*BlockSize*Scale)
+	p.direction = utils.North
+	p.currentBullet1 = nil
+	p.currentBullet2 = nil
 }
 
 func (p *Player) CalculateMovement(win *pixelgl.Window, dt float64) (pixel.Vec, utils.Direction) {
@@ -104,11 +100,35 @@ func (p *Player) CalculateMovement(win *pixelgl.Window, dt float64) (pixel.Vec, 
 
 func (p *Player) Shoot(win *pixelgl.Window, _ float64) *Bullet {
 	now := time.Now()
-	canShoot := now.Sub(p.lastShootingTime) > p.shootingInterval
-	noCurrentBullet := p.currentBullet == nil || p.currentBullet.destroyed
-	if noCurrentBullet && canShoot && win.JustPressed(pixelgl.KeySpace) {
+	if p.currentBullet1 != nil && p.currentBullet1.destroyed {
+		p.currentBullet1 = nil
+	}
+	if p.currentBullet2 != nil && p.currentBullet2.destroyed {
+		p.currentBullet2 = nil
+	}
+
+	var shootingInterval time.Duration
+	var canShoot bool
+	if p.level < 2 {
+		shootingInterval = p.shootingInterval
+		canShoot = p.currentBullet1 == nil
+	} else {
+		canShoot = p.currentBullet2 == nil
+		if canShoot {
+			shootingInterval = p.shootingInterval / 2
+			if p.currentBullet1 != nil && p.currentBullet2 == nil {
+				shootingInterval = p.shootingInterval / 8
+			}
+		}
+	}
+	canShoot = canShoot && now.Sub(p.lastShootingTime) >= shootingInterval
+	if canShoot && win.JustPressed(pixelgl.KeySpace) {
 		bullet := CreateBullet(p, p.bulletSpeed)
-		p.currentBullet = bullet
+		if p.currentBullet1 == nil {
+			p.currentBullet1 = bullet
+		} else {
+			p.currentBullet2 = bullet
+		}
 		p.lastShootingTime = now
 		return bullet
 	}
@@ -133,6 +153,45 @@ func (p *Player) Move(movementRes *MovementResult, _ float64) {
 func (p *Player) MakeImmune(maxDuration time.Duration) {
 	p.immune = true
 	p.maxImmunityDuration = maxDuration
+}
+
+func (p *Player) Upgrade() {
+	if p.level != maxLevel {
+		p.changeLevel(p.level + 1)
+	}
+}
+
+func (p *Player) ResetLevel() {
+	p.changeLevel(0)
+}
+
+func (p *Player) changeLevel(level int) {
+	if level >= 4 {
+		panic("player: level out of bounds [0, 4)")
+	}
+	p.level = level
+
+	switch p.level {
+	case 0:
+		p.bulletSpeed = 100 * Scale
+		p.speed = 44 * Scale
+	default:
+		p.bulletSpeed = 200 * Scale
+		p.speed = 50 * Scale
+	}
+
+	minYStart, maxYStart := 240.0, 256.0
+	minY, maxY := minYStart-float64(p.level)*TankSize, maxYStart-float64(p.level)*TankSize
+	p.model = utils.NewAnimation([]utils.AnimationFrame{
+		{
+			Frame:    pixel.NewSprite(p.spritesheet, pixel.R(0, minY, 16, maxY)),
+			Duration: time.Microsecond * 66666,
+		},
+		{
+			Frame:    pixel.NewSprite(p.spritesheet, pixel.R(16, minY, 32, maxY)),
+			Duration: time.Microsecond * 66666,
+		},
+	})
 }
 
 func (p *Player) Draw(win *pixelgl.Window, dt float64, isPaused bool) {

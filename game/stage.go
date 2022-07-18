@@ -93,7 +93,6 @@ func (s *Stage) NeedsRedraw() {
 }
 
 func (s *Stage) ArmorHQ() {
-	println("armor")
 	hqIndexes := s.getHQIndexes()
 	for _, hqIndex := range hqIndexes {
 		row := hqIndex[0]
@@ -106,7 +105,6 @@ func (s *Stage) ArmorHQ() {
 }
 
 func (s *Stage) DisarmorHQ() {
-	println("disarmor")
 	hqIndexes := s.getHQIndexes()
 	shiftX, shiftY := BlockSize*Scale/2, BlockSize*Scale/2
 	for _, hqIndex := range hqIndexes {

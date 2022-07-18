@@ -2,13 +2,14 @@ package game
 
 import (
 	"fmt"
-	"golang.org/x/image/colornames"
 	"image/color"
 	"time"
 
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/faiface/pixel/text"
+
+	"golang.org/x/image/colornames"
 )
 
 type StageTitleState struct {
@@ -16,12 +17,14 @@ type StageTitleState struct {
 	stageNum       int
 	stateStartTime time.Time
 	stageTxt       *text.Text
+	player         *Player
 }
 
-func NewStageTitleState(config StateConfig, stageNum int) *StageTitleState {
+func NewStageTitleState(config StateConfig, stageNum int, player *Player) *StageTitleState {
 	s := new(StageTitleState)
 	s.config = config
 	s.stageNum = stageNum
+	s.player = player
 
 	atlas := text.NewAtlas(s.config.DefaultFont, text.ASCII)
 	s.stageTxt = text.New(pixel.V(0, 0), atlas)
@@ -46,7 +49,7 @@ func (s *StageTitleState) Update(_ *pixelgl.Window, _ float64) State {
 		s.stateStartTime = now
 	}
 	if now.Sub(s.stateStartTime) >= time.Second*3 {
-		return NewPlaygroundState(s.config, s.stageNum)
+		return NewPlaygroundState(s.config, s.stageNum, s.player)
 	}
 	return nil
 }
