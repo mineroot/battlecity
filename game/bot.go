@@ -1,15 +1,13 @@
 package game
 
 import (
-	"math"
-	"math/rand"
-	"time"
-
 	"battlecity/game/utils"
-
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/google/uuid"
+	"math"
+	"math/rand"
+	"time"
 )
 
 type BotType int

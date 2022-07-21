@@ -2,23 +2,25 @@ package main
 
 import (
 	"battlecity/game"
+	"battlecity/game/sfx"
 	"bytes"
 	"embed"
 	"fmt"
+	"github.com/faiface/pixel"
+	"github.com/faiface/pixel/pixelgl"
+	"github.com/golang/freetype/truetype"
+	"golang.org/x/image/font"
 	"image"
 	_ "image/png"
 	"math/rand"
 	"time"
-
-	"golang.org/x/image/font"
-
-	"github.com/faiface/pixel"
-	"github.com/faiface/pixel/pixelgl"
-	"github.com/golang/freetype/truetype"
 )
 
 //go:embed assets/stages/*
 var stagesConfigs embed.FS
+
+//go:embed assets/sfx/*
+var sfxFiles embed.FS
 
 //go:embed assets/spritesheet.png
 var spritesheetPng []byte
@@ -61,11 +63,18 @@ func run() {
 		panic(err)
 	}
 
+	err = sfx.Init(sfxFiles)
+	if err != nil {
+		panic(err)
+	}
 	spritesheet, err := loadSpritesheet()
 	if err != nil {
 		panic(err)
 	}
 	defaultFont, err := loadFont()
+	if err != nil {
+		panic(err)
+	}
 	g := game.NewGame(game.StateConfig{
 		Spritesheet:   spritesheet,
 		DefaultFont:   defaultFont,

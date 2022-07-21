@@ -3,6 +3,7 @@ module battlecity
 go 1.18
 
 require (
+	github.com/faiface/beep v1.1.0
 	github.com/faiface/pixel v0.11.0-beta
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/google/uuid v1.3.0
@@ -15,5 +16,9 @@ require (
 	github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6 // indirect
 	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20220712193148-63cf1f4ef61f // indirect
 	github.com/go-gl/mathgl v1.0.0 // indirect
+	github.com/hajimehoshi/oto v0.7.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	golang.org/x/exp v0.0.0-20190306152737-a1d7652674e8 // indirect
+	golang.org/x/mobile v0.0.0-20190415191353-3e0bab5405d6 // indirect
+	golang.org/x/sys v0.0.0-20190626150813-e07cf5db2756 // indirect
 )

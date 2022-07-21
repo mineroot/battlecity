@@ -2,16 +2,14 @@ package game
 
 import (
 	"fmt"
-	"image/color"
-	"math"
-
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/faiface/pixel/text"
-
 	"golang.org/x/image/colornames"
 	"golang.org/x/image/font"
+	"image/color"
+	"math"
 )
 
 type RSideData struct {
@@ -30,7 +28,7 @@ type RSide struct {
 	atlas           *text.Atlas
 	stageTxt        *text.Text
 	livesTxt        *text.Text
-	data            RSideData
+	data            *RSideData
 }
 
 func NewRightSide(spritesheet pixel.Picture, font font.Face) *RSide {
@@ -45,10 +43,10 @@ func NewRightSide(spritesheet pixel.Picture, font font.Face) *RSide {
 }
 
 func (r *RSide) Update(data RSideData) {
-	if r.data != data {
+	if r.data == nil || *r.data != data {
 		r.needsRedraw = true
 	}
-	if r.data.firstPlayerLives != data.firstPlayerLives {
+	if r.data == nil || r.data.firstPlayerLives != data.firstPlayerLives {
 		r.livesTxt = text.New(pixel.V(
 			29*BlockSize*Scale+36,
 			10*BlockSize*Scale+30,
@@ -56,7 +54,7 @@ func (r *RSide) Update(data RSideData) {
 		r.livesTxt.Color = colornames.Black
 		_, _ = fmt.Fprintln(r.livesTxt, fmt.Sprintf("%d", data.firstPlayerLives))
 	}
-	if r.data.stageNum != data.stageNum {
+	if r.data == nil || r.data.stageNum != data.stageNum {
 		r.stageTxt = text.New(pixel.V(
 			29*BlockSize*Scale+36,
 			3*BlockSize*Scale+30,
@@ -64,7 +62,7 @@ func (r *RSide) Update(data RSideData) {
 		r.stageTxt.Color = colornames.Black
 		_, _ = fmt.Fprintln(r.stageTxt, fmt.Sprintf("%d", data.stageNum))
 	}
-	r.data = data
+	r.data = &data
 }
 
 func (r *RSide) Draw(win *pixelgl.Window) {

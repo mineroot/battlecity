@@ -1,14 +1,13 @@
 package game
 
 import (
-	"math"
-	"time"
-
+	"battlecity/game/sfx"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/google/uuid"
-
 	"golang.org/x/image/colornames"
+	"math"
+	"time"
 )
 
 type PlaygroundState struct {
@@ -58,6 +57,11 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 	}
 	if win.JustPressed(pixelgl.KeyEscape) && !s.isStageCleared() {
 		s.isPaused = !s.isPaused
+		if s.isPaused {
+			sfx.PlayPause()
+		} else {
+			sfx.StopPause()
+		}
 	}
 	if s.isPaused {
 		return nil
@@ -215,6 +219,7 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 							botTank, _ := tank.(*Bot)
 							botTank.hp--
 							if botTank.isBonus {
+								sfx.PlayBonusAppeared()
 								botTank.isBonus = false
 								s.activeBonus = NewBonus(s.config.Spritesheet, s.stage.Blocks)
 							}
@@ -226,6 +231,7 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 							if s.player.lives < 0 {
 								// TODO game over
 							}
+							sfx.PlayPlayerDestroyed()
 							s.player.ResetLevel()
 							s.player.Respawn()
 						}
@@ -308,6 +314,7 @@ func (s *PlaygroundState) bonusUpdate() {
 		bonusR := Rect(s.activeBonus.pos, BonusSize, BonusSize)
 		playerR := Rect(s.player.pos, TankSize, TankSize)
 		if playerR.Intersect(bonusR) != pixel.ZR {
+			isLifeBonus := false
 			switch s.activeBonus.bonusType {
 			case ImmunityBonus:
 				s.player.MakeImmune(time.Second * 10)
@@ -322,9 +329,15 @@ func (s *PlaygroundState) bonusUpdate() {
 			case AnnihilationBonus:
 				s.annihilateBots()
 			case LifeBonus:
+				isLifeBonus = true
 				if s.player.lives < 9 {
 					s.player.lives++
 				}
+			}
+			if isLifeBonus {
+				sfx.PlayBonusTakenLife()
+			} else {
+				sfx.PlayBonusTakenOther()
 			}
 			s.activeBonus = nil
 		}
@@ -332,6 +345,7 @@ func (s *PlaygroundState) bonusUpdate() {
 }
 
 func (s *PlaygroundState) destroyBot(id uuid.UUID) {
+	sfx.PlayBotDestroyed()
 	s.destroyedBots = append(s.destroyedBots, s.bots[id].botType)
 	delete(s.bots, id)
 }

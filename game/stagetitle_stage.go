@@ -1,15 +1,14 @@
 package game
 
 import (
+	"battlecity/game/sfx"
 	"fmt"
-	"image/color"
-	"time"
-
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/faiface/pixel/text"
-
 	"golang.org/x/image/colornames"
+	"image/color"
+	"time"
 )
 
 type StageTitleState struct {
@@ -39,6 +38,8 @@ func NewStageTitleState(config StateConfig, stageNum int, player *Player) *Stage
 	s.stageTxt.Orig.X = config.WindowBounds.W()/2 - r.W()/2
 	s.stageTxt.Orig.Y = config.WindowBounds.H()/2 - r.H()/2
 	_, _ = fmt.Fprintln(s.stageTxt, txt)
+
+	sfx.ResetForNewStage()
 
 	return s
 }

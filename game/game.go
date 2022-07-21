@@ -2,11 +2,9 @@ package game
 
 import (
 	"embed"
-
-	"golang.org/x/image/font"
-
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
+	"golang.org/x/image/font"
 )
 
 type State interface {

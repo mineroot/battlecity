@@ -1,14 +1,13 @@
 package game
 
 import (
-	"math"
-	"time"
-
+	"battlecity/game/sfx"
 	"battlecity/game/utils"
-
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/google/uuid"
+	"math"
+	"time"
 )
 
 const maxLevel = 3
@@ -82,8 +81,10 @@ func (p *Player) CalculateMovement(win *pixelgl.Window, dt float64) (pixel.Vec, 
 	} else if win.Pressed(pixelgl.KeyA) {
 		newDirection = utils.West
 	} else {
+		sfx.PlayTankIdle()
 		return p.pos, p.direction
 	}
+	sfx.PlayTankMoving()
 	speed := p.speed * dt
 	newPos := p.pos.Add(newDirection.Velocity(speed))
 
@@ -123,6 +124,7 @@ func (p *Player) Shoot(win *pixelgl.Window, _ float64) *Bullet {
 	}
 	canShoot = canShoot && now.Sub(p.lastShootingTime) >= shootingInterval
 	if canShoot && win.JustPressed(pixelgl.KeySpace) {
+		sfx.PlayShoot()
 		bullet := CreateBullet(p, p.bulletSpeed)
 		if p.currentBullet1 == nil {
 			p.currentBullet1 = bullet

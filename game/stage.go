@@ -3,13 +3,12 @@ package game
 import (
 	"embed"
 	"fmt"
-	"log"
-	"math"
-	"math/rand"
-
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/google/uuid"
+	"log"
+	"math"
+	"math/rand"
 )
 
 const (

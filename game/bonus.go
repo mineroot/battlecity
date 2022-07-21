@@ -1,13 +1,11 @@
 package game
 
 import (
-	"math/rand"
-	"time"
-
 	"battlecity/game/utils"
-
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
+	"math/rand"
+	"time"
 )
 
 type BonusType int

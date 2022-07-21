@@ -2,7 +2,6 @@ package game
 
 import (
 	"battlecity/game/utils"
-
 	"github.com/faiface/pixel"
 )
 
