@@ -183,7 +183,13 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 					intersect := bulletRect.Intersect(blockRect)
 					if intersect != pixel.ZR { // collision detected
 						if block.destroyable || (block.kind == SteelBlock && bullet.IsUpgraded()) {
-							collidedDestroyableBlocks = append(collidedDestroyableBlocks, block)
+							if block.kind == HQBlock {
+								sfx.PlayPlayerDestroyed()
+								s.stage.DestroyHQ()
+								// TODO game over
+							} else {
+								collidedDestroyableBlocks = append(collidedDestroyableBlocks, block)
+							}
 						}
 						collision = true
 					}

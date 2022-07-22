@@ -11,6 +11,7 @@ const (
 	BrickBlock  = "b"
 	SteelBlock  = "s"
 	WaterBlock  = "w"
+	HQBlock     = "h"
 	SpaceBlock  = " "
 	BlockSize   = 8.0
 )
@@ -35,8 +36,7 @@ type Block struct {
 
 func Border(pos pixel.Vec, row, column int) *Block {
 	block := new(Block)
-	block.row, block.column = row, column
-	block.pos = pos
+	block.row, block.column, block.pos = row, column, pos
 	block.kind = BorderBlock
 	block.destroyable = false
 	block.passable = false
@@ -47,8 +47,7 @@ func Border(pos pixel.Vec, row, column int) *Block {
 
 func Brick(pos pixel.Vec, row, column int, shiftX, shiftY float64) *Block {
 	block := new(Block)
-	block.row, block.column = row, column
-	block.pos = pos
+	block.row, block.column, block.pos = row, column, pos
 	block.kind = BrickBlock
 	block.destroyable = true
 	block.passable = false
@@ -61,8 +60,7 @@ func Brick(pos pixel.Vec, row, column int, shiftX, shiftY float64) *Block {
 
 func Steel(pos pixel.Vec, row, column int) *Block {
 	block := new(Block)
-	block.row, block.column = row, column
-	block.pos = pos
+	block.row, block.column, block.pos = row, column, pos
 	block.kind = SteelBlock
 	block.destroyable = false
 	block.passable = false
@@ -73,8 +71,7 @@ func Steel(pos pixel.Vec, row, column int) *Block {
 
 func Water(pos pixel.Vec, row, column int) *Block {
 	block := new(Block)
-	block.row, block.column = row, column
-	block.pos = pos
+	block.row, block.column, block.pos = row, column, pos
 	block.kind = WaterBlock
 	block.destroyable = false
 	block.passable = false
@@ -83,10 +80,21 @@ func Water(pos pixel.Vec, row, column int) *Block {
 	return block
 }
 
-func Space(pos pixel.Vec, row, column int) *Block {
+func HQ(pos pixel.Vec, row, column int) *Block {
 	block := new(Block)
 	block.row, block.column = row, column
 	block.pos = pos
+	block.kind = HQBlock
+	block.destroyable = true
+	block.passable = false
+	block.shootable = false
+	block.bonus = false
+	return block
+}
+
+func Space(pos pixel.Vec, row, column int) *Block {
+	block := new(Block)
+	block.row, block.column, block.pos = row, column, pos
 	block.kind = SpaceBlock
 	block.destroyable = false
 	block.passable = true

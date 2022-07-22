@@ -17,14 +17,17 @@ const (
 )
 
 type Stage struct {
-	Blocks         [stageColumns][stageRows]*Block
-	blockSprites   map[string]*pixel.Sprite
-	quadrantCanvas *pixelgl.Canvas
-	batch          *pixel.Batch
-	needsRedraw    bool
-	botsPool       []BotType
-	botPoolIndex   int
-	isHQArmored    bool
+	Blocks            [stageColumns][stageRows]*Block
+	blockSprites      map[string]*pixel.Sprite
+	hqSprite          *pixel.Sprite
+	destroyedHQSprite *pixel.Sprite
+	quadrantCanvas    *pixelgl.Canvas
+	batch             *pixel.Batch
+	needsRedraw       bool
+	botsPool          []BotType
+	botPoolIndex      int
+	isHQArmored       bool
+	isHQDestroyed     bool
 }
 
 func NewStage(spritesheet pixel.Picture, stagesConfigs embed.FS, stageNum int) *Stage {
@@ -64,6 +67,8 @@ func NewStage(spritesheet pixel.Picture, stagesConfigs embed.FS, stageNum int) *
 			block = Steel(pos, row, column)
 		case WaterBlock:
 			block = Water(pos, row, column)
+		case HQBlock:
+			block = HQ(pos, row, column)
 		case SpaceBlock:
 			block = Space(pos, row, column)
 		default:
@@ -82,6 +87,8 @@ func NewStage(spritesheet pixel.Picture, stagesConfigs embed.FS, stageNum int) *
 		SteelBlock:  pixel.NewSprite(spritesheet, pixel.R(256, 176, 264, 184)),
 		WaterBlock:  pixel.NewSprite(spritesheet, pixel.R(256, 192, 264, 200)),
 	}
+	stage.hqSprite = pixel.NewSprite(spritesheet, pixel.R(304, 208, 320, 224))
+	stage.destroyedHQSprite = pixel.NewSprite(spritesheet, pixel.R(320, 208, 336, 224))
 	stage.needsRedraw = true
 	stage.initBotsPool(stageNum)
 	return stage
@@ -92,10 +99,9 @@ func (s *Stage) NeedsRedraw() {
 }
 
 func (s *Stage) ArmorHQ() {
-	hqIndexes := s.getHQIndexes()
-	for _, hqIndex := range hqIndexes {
-		row := hqIndex[0]
-		column := hqIndex[1]
+	for _, hqArmorIndex := range s.getHQArmorIndexes() {
+		row := hqArmorIndex[0]
+		column := hqArmorIndex[1]
 		block := s.Blocks[row][column]
 		s.Blocks[row][column] = Steel(block.pos, block.row, block.column)
 	}
@@ -104,16 +110,26 @@ func (s *Stage) ArmorHQ() {
 }
 
 func (s *Stage) DisarmorHQ() {
-	hqIndexes := s.getHQIndexes()
 	shiftX, shiftY := BlockSize*Scale/2, BlockSize*Scale/2
-	for _, hqIndex := range hqIndexes {
-		row := hqIndex[0]
-		column := hqIndex[1]
+	for _, hqArmorIndex := range s.getHQArmorIndexes() {
+		row := hqArmorIndex[0]
+		column := hqArmorIndex[1]
 		block := s.Blocks[row][column]
 		s.Blocks[row][column] = Brick(block.pos, block.row, block.column, shiftX, shiftY)
 	}
 	s.needsRedraw = true
 	s.isHQArmored = false
+}
+
+func (s *Stage) DestroyHQ() {
+	for _, hqIndex := range s.getHQIndexes() {
+		row := hqIndex[0]
+		column := hqIndex[1]
+		block := s.Blocks[row][column]
+		s.Blocks[row][column] = Space(block.pos, block.row, block.column)
+	}
+	s.needsRedraw = true
+	s.isHQDestroyed = true
 }
 
 func (s *Stage) DestroyBlock(block *Block) {
@@ -144,6 +160,13 @@ func (s *Stage) Draw(win *pixelgl.Window) {
 				}
 			}
 		}
+	}
+	hqPos := pixel.V(15*Scale*BlockSize, 3*Scale*BlockSize)
+	hqM := pixel.IM.Moved(hqPos).Scaled(hqPos, Scale)
+	if s.isHQDestroyed {
+		s.destroyedHQSprite.Draw(s.batch, hqM)
+	} else {
+		s.hqSprite.Draw(s.batch, hqM)
 	}
 	s.batch.Draw(win)
 	s.needsRedraw = false
@@ -219,7 +242,7 @@ func (s *Stage) initBotsPool(stageNum int) {
 	}
 }
 
-func (s *Stage) getHQIndexes() [8][2]int {
+func (s *Stage) getHQArmorIndexes() [8][2]int {
 	return [8][2]int{
 		{25, 13},
 		{25, 14},
@@ -229,5 +252,14 @@ func (s *Stage) getHQIndexes() [8][2]int {
 		{26, 16},
 		{27, 13},
 		{27, 16},
+	}
+}
+
+func (s *Stage) getHQIndexes() [4][2]int {
+	return [4][2]int{
+		{26, 14},
+		{26, 15},
+		{27, 14},
+		{27, 15},
 	}
 }
