@@ -49,7 +49,7 @@ func NewBonus(spritesheet pixel.Picture, blocks [stageColumns][stageRows]*Block)
 	bonus.model = utils.NewAnimation([]utils.AnimationFrame{
 		{Frame: pixel.NewSprite(spritesheet, pixel.R(minX, 128, maxX, 144)), Duration: duration},
 		{Frame: nil, Duration: duration},
-	})
+	}, -1)
 
 	return bonus
 }

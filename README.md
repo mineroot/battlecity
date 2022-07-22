@@ -4,7 +4,7 @@
 - [x] different bot types (armored, personnel carrier etc)
 - [ ] improve AI (better pathfinding to HQ)
 - [x] bonuses
-- [ ] block and tank destruction animations 
+- [x] block and tank destruction animations 
 - [x] HQ drawing
 - [ ] full game circle (main menu, ~~stages loading~~, ~~playground~~, score board, game over)
 - [ ] sound effects

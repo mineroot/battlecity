@@ -1,6 +1,7 @@
 package game
 
 import (
+	"battlecity/game/explosions"
 	"battlecity/game/sfx"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
@@ -29,6 +30,7 @@ type PlaygroundState struct {
 	timeStopDuration  time.Duration
 	isArmoredHQBonus  bool
 	armoredHQDuration time.Duration
+	explosions        []*explosions.Explosion
 }
 
 func NewPlaygroundState(config StateConfig, stageNum int, player *Player) *PlaygroundState {
@@ -184,8 +186,11 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 					if intersect != pixel.ZR { // collision detected
 						if block.destroyable || (block.kind == SteelBlock && bullet.IsUpgraded()) {
 							if block.kind == HQBlock {
-								sfx.PlayPlayerDestroyed()
 								s.stage.DestroyHQ()
+								sfx.PlayHQDestroyed()
+								hqPos := pixel.V(15*Scale*BlockSize, 3*Scale*BlockSize)
+								explosion := explosions.NewExplosion(explosions.TankExplosion, hqPos)
+								s.explosions = append(s.explosions, explosion)
 								// TODO game over
 							} else {
 								collidedDestroyableBlocks = append(collidedDestroyableBlocks, block)
@@ -238,6 +243,8 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 								// TODO game over
 							}
 							sfx.PlayPlayerDestroyed()
+							explosion := explosions.NewExplosion(explosions.TankExplosion, s.player.pos)
+							s.explosions = append(s.explosions, explosion)
 							s.player.ResetLevel()
 							s.player.Respawn()
 						}
@@ -247,6 +254,7 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 			}
 		}
 		// check collision between bullet and bullet
+		isBulletBulletCollision := false
 		if !collision {
 			for j := 0; j < len(s.bullets); j++ {
 				bullet2 := s.bullets[j]
@@ -259,6 +267,7 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 					intersect := bulletRect.Intersect(bullet2Rect)
 					if intersect != pixel.ZR { // collision detected
 						collision = true
+						isBulletBulletCollision = true
 						bullet2.Destroy()
 					}
 				}
@@ -266,6 +275,10 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 		}
 
 		if collision {
+			if !isBulletBulletCollision {
+				explosion := explosions.NewExplosion(explosions.BulletExplosion, bullet.pos)
+				s.explosions = append(s.explosions, explosion)
+			}
 			bullet.Destroy()
 		}
 		// remove destroyed bullets from slice
@@ -276,6 +289,15 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 			}
 		}
 		s.bullets = tmpBullets
+	}
+
+	// handle explosions
+	for i := 0; i < len(s.explosions); i++ {
+		exp := s.explosions[i]
+		if exp.IsEnded() {
+			s.explosions[i] = s.explosions[len(s.explosions)-1]
+			s.explosions = s.explosions[:len(s.explosions)-1]
+		}
 	}
 
 	// handle shooting
@@ -308,6 +330,9 @@ func (s *PlaygroundState) Draw(win *pixelgl.Window, dt float64) {
 	s.player.Draw(win, dt, s.isPaused)
 	for _, b := range s.bots {
 		b.Draw(win, dt, s.isPaused || s.isTimeStopBonus)
+	}
+	for _, explosion := range s.explosions {
+		explosion.Draw(win, dt, s.isPaused)
 	}
 	if s.activeBonus != nil {
 		s.activeBonus.Draw(win, dt)
@@ -353,6 +378,8 @@ func (s *PlaygroundState) bonusUpdate() {
 func (s *PlaygroundState) destroyBot(id uuid.UUID) {
 	sfx.PlayBotDestroyed()
 	s.destroyedBots = append(s.destroyedBots, s.bots[id].botType)
+	explosion := explosions.NewExplosion(explosions.TankExplosion, s.bots[id].pos)
+	s.explosions = append(s.explosions, explosion)
 	delete(s.bots, id)
 }
 

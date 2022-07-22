@@ -2,6 +2,7 @@ package main
 
 import (
 	"battlecity/game"
+	"battlecity/game/explosions"
 	"battlecity/game/sfx"
 	"bytes"
 	"embed"
@@ -75,6 +76,7 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
+	explosions.InnitExplosionFrames(spritesheet, game.Scale)
 	g := game.NewGame(game.StateConfig{
 		Spritesheet:   spritesheet,
 		DefaultFont:   defaultFont,

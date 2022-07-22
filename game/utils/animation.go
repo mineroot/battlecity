@@ -16,11 +16,13 @@ type Animation struct {
 	framesCount       int
 	animationDuration time.Duration
 	totalDuration     time.Duration
+	maxCircleNum      int
 }
 
-func NewAnimation(frames []AnimationFrame) *Animation {
+func NewAnimation(frames []AnimationFrame, maxCircleNum int) *Animation {
 	a := new(Animation)
 	a.frames = frames
+	a.maxCircleNum = maxCircleNum
 	a.framesCount = len(a.frames)
 	for _, frame := range a.frames {
 		a.animationDuration += frame.Duration
@@ -32,8 +34,11 @@ func (a *Animation) CurrentFrame(dt float64) *pixel.Sprite {
 	dtDuration := time.Duration(dt * float64(time.Second))
 	a.totalDuration += dtDuration
 
-	circleNum := a.totalDuration / a.animationDuration
-	currentDuration := a.totalDuration - circleNum*a.animationDuration
+	circleNum := int(a.totalDuration / a.animationDuration)
+	if a.maxCircleNum > 0 && circleNum >= a.maxCircleNum {
+		return nil
+	}
+	currentDuration := a.totalDuration - time.Duration(circleNum)*a.animationDuration
 
 	framesDuration := time.Duration(0)
 	for _, frame := range a.frames {

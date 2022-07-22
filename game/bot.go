@@ -237,11 +237,11 @@ func (b *Bot) initBotType(spritesheet pixel.Picture, botType BotType) {
 		hp = 4
 	}
 
-	b.model = utils.NewAnimation(frames[:2])
-	b.bonusModel = utils.NewAnimation(frames)
+	b.model = utils.NewAnimation(frames[:2], -1)
+	b.bonusModel = utils.NewAnimation(frames, -1)
 	b.bonusModelPaused = utils.NewAnimation([]utils.AnimationFrame{
 		frames[0], frames[0], frames[2], frames[2], frames[4], frames[4], frames[6], frames[6],
-	})
+	}, -1)
 	b.speed, b.bulletSpeed = speed, bulletSpeed
 	b.hp = hp
 }

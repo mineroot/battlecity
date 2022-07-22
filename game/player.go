@@ -47,7 +47,7 @@ func NewPlayer(spritesheet pixel.Picture) *Player {
 			Frame:    pixel.NewSprite(spritesheet, pixel.R(272, 96, 288, 112)),
 			Duration: time.Millisecond * 40,
 		},
-	})
+	}, -1)
 	return p
 }
 
@@ -193,7 +193,7 @@ func (p *Player) changeLevel(level int) {
 			Frame:    pixel.NewSprite(p.spritesheet, pixel.R(16, minY, 32, maxY)),
 			Duration: time.Microsecond * 66666,
 		},
-	})
+	}, -1)
 }
 
 func (p *Player) Draw(win *pixelgl.Window, dt float64, isPaused bool) {

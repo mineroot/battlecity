@@ -118,6 +118,10 @@ func PlayPlayerDestroyed() {
 	speaker.Play(beep.Take(sr.N(time.Millisecond*500), stream("PlayerDestruction.wav")))
 }
 
+func PlayHQDestroyed() {
+	PlayPlayerDestroyed()
+}
+
 func PlayShoot() {
 	speaker.Lock()
 	_ = shootStream.Seek(0)
