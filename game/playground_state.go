@@ -331,11 +331,12 @@ func (s *PlaygroundState) Draw(win *pixelgl.Window, dt float64) {
 	for _, b := range s.bots {
 		b.Draw(win, dt, s.isPaused || s.isTimeStopBonus)
 	}
-	for _, explosion := range s.explosions {
-		explosion.Draw(win, dt, s.isPaused)
-	}
+	s.stage.DrawTrees(win)
 	if s.activeBonus != nil {
 		s.activeBonus.Draw(win, dt)
+	}
+	for _, explosion := range s.explosions {
+		explosion.Draw(win, dt, s.isPaused)
 	}
 	s.rSide.Draw(win)
 }

@@ -133,7 +133,11 @@ func (b *Bot) Shoot(_ *pixelgl.Window, dt float64) *Bullet {
 
 func (b *Bot) Draw(win *pixelgl.Window, dt float64, isPaused bool) {
 	if b.onCreation {
-		frame := b.creationModel.CurrentFrame(dt)
+		creationDt := dt
+		if isPaused {
+			creationDt = 0
+		}
+		frame := b.creationModel.CurrentFrame(creationDt)
 		if frame != nil {
 			m := pixel.IM.Moved(b.pos).Scaled(b.pos, Scale)
 			frame.Draw(win, m)

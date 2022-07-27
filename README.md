@@ -1,5 +1,6 @@
 ### TODO:
 - [ ] fix bug when tanks collide infinitely and stuck
+- [ ] fix bots spawn position
 - [x] bullets collision with tanks
 - [x] different bot types (armored, personnel carrier etc)
 - [ ] improve AI (better pathfinding to HQ)
@@ -8,7 +9,7 @@
 - [x] HQ drawing
 - [ ] full game circle (main menu, ~~stages loading~~, ~~playground~~, score board, game over)
 - [x] sound effects
-- [ ] ice/trees stage blocks
+- [ ] ice/~~trees~~ stage blocks
 - [x] tank creation animation
-- [ ] all stages (1/35 done)
+- [ ] all stages (2/35 done)
 - [ ] player two

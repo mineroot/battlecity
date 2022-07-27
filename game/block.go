@@ -12,6 +12,7 @@ const (
 	SteelBlock  = "s"
 	WaterBlock  = "w"
 	HQBlock     = "h"
+	TreesBlock  = "t"
 	SpaceBlock  = " "
 	BlockSize   = 8.0
 )
@@ -89,6 +90,17 @@ func HQ(pos pixel.Vec, row, column int) *Block {
 	block.passable = false
 	block.shootable = false
 	block.bonus = false
+	return block
+}
+
+func Trees(pos pixel.Vec, row, column int) *Block {
+	block := new(Block)
+	block.row, block.column, block.pos = row, column, pos
+	block.kind = TreesBlock
+	block.destroyable = false
+	block.passable = true
+	block.shootable = true
+	block.bonus = true
 	return block
 }
 

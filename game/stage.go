@@ -23,7 +23,9 @@ type Stage struct {
 	destroyedHQSprite *pixel.Sprite
 	quadrantCanvas    *pixelgl.Canvas
 	batch             *pixel.Batch
+	treesBatch        *pixel.Batch
 	needsRedraw       bool
+	treesDrawn        bool
 	botsPool          []BotType
 	botPoolIndex      int
 	isHQArmored       bool
@@ -69,10 +71,12 @@ func NewStage(spritesheet pixel.Picture, stagesConfigs embed.FS, stageNum int) *
 			block = Water(pos, row, column)
 		case HQBlock:
 			block = HQ(pos, row, column)
+		case TreesBlock:
+			block = Trees(pos, row, column)
 		case SpaceBlock:
 			block = Space(pos, row, column)
 		default:
-			log.Fatalf("field: invalid block symbol: %s", blockSymbol)
+			log.Fatalf("stage: invalid block symbol: %s", blockSymbol)
 		}
 		blocks[row][column] = block
 		n++
@@ -81,11 +85,13 @@ func NewStage(spritesheet pixel.Picture, stagesConfigs embed.FS, stageNum int) *
 	stage := new(Stage)
 	stage.Blocks = blocks
 	stage.batch = pixel.NewBatch(&pixel.TrianglesData{}, spritesheet)
+	stage.treesBatch = pixel.NewBatch(&pixel.TrianglesData{}, spritesheet)
 	stage.blockSprites = map[string]*pixel.Sprite{
 		BorderBlock: pixel.NewSprite(spritesheet, pixel.R(368, 248, 376, 256)),
 		BrickBlock:  pixel.NewSprite(spritesheet, pixel.R(256, 184, 264, 192)),
 		SteelBlock:  pixel.NewSprite(spritesheet, pixel.R(256, 176, 264, 184)),
 		WaterBlock:  pixel.NewSprite(spritesheet, pixel.R(256, 192, 264, 200)),
+		TreesBlock:  pixel.NewSprite(spritesheet, pixel.R(264, 176, 272, 184)),
 	}
 	stage.hqSprite = pixel.NewSprite(spritesheet, pixel.R(304, 208, 320, 224))
 	stage.destroyedHQSprite = pixel.NewSprite(spritesheet, pixel.R(320, 208, 336, 224))
@@ -170,6 +176,21 @@ func (s *Stage) Draw(win *pixelgl.Window) {
 	}
 	s.batch.Draw(win)
 	s.needsRedraw = false
+}
+
+func (s *Stage) DrawTrees(win *pixelgl.Window) {
+	if s.treesDrawn {
+		s.treesBatch.Draw(win)
+		return
+	}
+	for _, blocks := range s.Blocks {
+		for _, block := range blocks {
+			if sprite, ok := s.blockSprites[block.kind]; ok && block.kind == TreesBlock {
+				sprite.Draw(s.treesBatch, pixel.IM.Moved(block.pos).Scaled(block.pos, Scale))
+			}
+		}
+	}
+	s.treesDrawn = true
 }
 
 func (s *Stage) CreateBot(tanks map[uuid.UUID]Tank, spritesheet pixel.Picture) *Bot {
