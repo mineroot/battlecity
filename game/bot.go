@@ -131,7 +131,7 @@ func (b *Bot) Shoot(_ *pixelgl.Window, dt float64) *Bullet {
 	return nil
 }
 
-func (b *Bot) Draw(win *pixelgl.Window, dt float64, isPaused bool) {
+func (b *Bot) Draw(win *pixelgl.Window, dt float64, isPaused, isTimeStopBonus bool) {
 	if b.onCreation {
 		creationDt := dt
 		if isPaused {
@@ -148,13 +148,13 @@ func (b *Bot) Draw(win *pixelgl.Window, dt float64, isPaused bool) {
 	}
 	var frame *pixel.Sprite
 	if b.isBonus {
-		if isPaused {
+		if isPaused || isTimeStopBonus {
 			frame = b.bonusModelPaused.CurrentFrame(dt)
 		} else {
 			frame = b.bonusModel.CurrentFrame(dt)
 		}
 	} else {
-		if isPaused {
+		if isPaused || isTimeStopBonus {
 			dt = 0
 		}
 		frame = b.model.CurrentFrame(dt)

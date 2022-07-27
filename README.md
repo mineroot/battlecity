@@ -11,5 +11,5 @@
 - [x] sound effects
 - [ ] ice/~~trees~~ stage blocks
 - [x] tank creation animation
-- [ ] all stages (2/35 done)
+- [ ] all stages (4/35 done)
 - [ ] player two

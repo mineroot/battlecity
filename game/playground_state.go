@@ -325,11 +325,11 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 
 func (s *PlaygroundState) Draw(win *pixelgl.Window, dt float64) {
 	win.Clear(colornames.Black)
-	s.stage.Draw(win)
+	s.stage.Draw(win, dt)
 	s.DrawBullets(win)
 	s.player.Draw(win, dt, s.isPaused)
 	for _, b := range s.bots {
-		b.Draw(win, dt, s.isPaused || s.isTimeStopBonus)
+		b.Draw(win, dt, s.isPaused, s.isTimeStopBonus)
 	}
 	s.stage.DrawTrees(win)
 	if s.activeBonus != nil {

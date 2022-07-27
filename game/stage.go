@@ -9,6 +9,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"time"
 )
 
 const (
@@ -17,18 +18,24 @@ const (
 )
 
 type Stage struct {
-	Blocks            [stageColumns][stageRows]*Block
-	blockSprites      map[string]*pixel.Sprite
-	hqSprite          *pixel.Sprite
-	destroyedHQSprite *pixel.Sprite
-	quadrantCanvas    *pixelgl.Canvas
-	batch             *pixel.Batch
-	treesBatch        *pixel.Batch
-	needsRedraw       bool
-	botsPool          []BotType
-	botPoolIndex      int
-	isHQArmored       bool
-	isHQDestroyed     bool
+	Blocks               [stageColumns][stageRows]*Block
+	blockSprites         map[string]*pixel.Sprite
+	staticBlockSprites   map[string]*pixel.Sprite
+	waterBlockSprites    [2]*pixel.Sprite
+	hqSprite             *pixel.Sprite
+	destroyedHQSprite    *pixel.Sprite
+	quadrantCanvas       *pixelgl.Canvas
+	blocksBatch          *pixel.Batch
+	staticBlocksBatch    *pixel.Batch
+	treesBlocksBatch     *pixel.Batch
+	water1BlocksBatch    *pixel.Batch
+	water2BlocksBatch    *pixel.Batch
+	needsRedraw          bool
+	botsPool             []BotType
+	botPoolIndex         int
+	isHQArmored          bool
+	isHQDestroyed        bool
+	totalDrawingDuration time.Duration
 }
 
 func NewStage(spritesheet pixel.Picture, stagesConfigs embed.FS, stageNum int) *Stage {
@@ -83,14 +90,22 @@ func NewStage(spritesheet pixel.Picture, stagesConfigs embed.FS, stageNum int) *
 
 	stage := new(Stage)
 	stage.Blocks = blocks
-	stage.batch = pixel.NewBatch(&pixel.TrianglesData{}, spritesheet)
-	stage.treesBatch = pixel.NewBatch(&pixel.TrianglesData{}, spritesheet)
+	stage.blocksBatch = pixel.NewBatch(&pixel.TrianglesData{}, spritesheet)
+	stage.staticBlocksBatch = pixel.NewBatch(&pixel.TrianglesData{}, spritesheet)
+	stage.treesBlocksBatch = pixel.NewBatch(&pixel.TrianglesData{}, spritesheet)
+	stage.water1BlocksBatch = pixel.NewBatch(&pixel.TrianglesData{}, spritesheet)
+	stage.water2BlocksBatch = pixel.NewBatch(&pixel.TrianglesData{}, spritesheet)
 	stage.blockSprites = map[string]*pixel.Sprite{
-		BorderBlock: pixel.NewSprite(spritesheet, pixel.R(368, 248, 376, 256)),
-		BrickBlock:  pixel.NewSprite(spritesheet, pixel.R(256, 184, 264, 192)),
-		SteelBlock:  pixel.NewSprite(spritesheet, pixel.R(256, 176, 264, 184)),
-		WaterBlock:  pixel.NewSprite(spritesheet, pixel.R(256, 192, 264, 200)),
+		BrickBlock: pixel.NewSprite(spritesheet, pixel.R(256, 184, 264, 192)),
+		SteelBlock: pixel.NewSprite(spritesheet, pixel.R(256, 176, 264, 184)),
+	}
+	stage.staticBlockSprites = map[string]*pixel.Sprite{
 		TreesBlock:  pixel.NewSprite(spritesheet, pixel.R(264, 176, 272, 184)),
+		BorderBlock: pixel.NewSprite(spritesheet, pixel.R(368, 248, 376, 256)),
+	}
+	stage.waterBlockSprites = [2]*pixel.Sprite{
+		pixel.NewSprite(spritesheet, pixel.R(264, 192, 272, 200)),
+		pixel.NewSprite(spritesheet, pixel.R(272, 192, 280, 200)),
 	}
 	stage.hqSprite = pixel.NewSprite(spritesheet, pixel.R(304, 208, 320, 224))
 	stage.destroyedHQSprite = pixel.NewSprite(spritesheet, pixel.R(320, 208, 336, 224))
@@ -143,23 +158,32 @@ func (s *Stage) DestroyBlock(block *Block) {
 	s.needsRedraw = true
 }
 
-func (s *Stage) Draw(win *pixelgl.Window) {
+func (s *Stage) Draw(win *pixelgl.Window, dt float64) {
+	// switch water batches every 500ms
+	if math.Mod(float64(s.totalDrawingDuration/(time.Millisecond*500)), 2) == 0 {
+		s.water1BlocksBatch.Draw(win)
+	} else {
+		s.water2BlocksBatch.Draw(win)
+	}
+
+	s.staticBlocksBatch.Draw(win)
+	s.totalDrawingDuration += time.Duration(dt * float64(time.Second))
 	if !s.needsRedraw {
-		s.batch.Draw(win)
+		s.blocksBatch.Draw(win)
 		return
 	}
 
-	s.batch.Clear()
+	s.blocksBatch.Clear()
 	for _, blocks := range s.Blocks {
 		for _, block := range blocks {
-			if sprite, ok := s.blockSprites[block.kind]; ok && block.kind != TreesBlock {
-				sprite.Draw(s.batch, pixel.IM.Moved(block.pos).Scaled(block.pos, Scale))
+			if sprite, ok := s.blockSprites[block.kind]; ok {
+				sprite.Draw(s.blocksBatch, pixel.IM.Moved(block.pos).Scaled(block.pos, Scale))
 				if block.destroyable {
 					for i := 0; i < 2; i++ {
 						for j := 0; j < 2; j++ {
 							imd := block.QuadrantIMDraw(i, j)
 							if imd != nil {
-								imd.Draw(s.batch)
+								imd.Draw(s.blocksBatch)
 							}
 						}
 					}
@@ -170,16 +194,16 @@ func (s *Stage) Draw(win *pixelgl.Window) {
 	hqPos := pixel.V(15*Scale*BlockSize, 3*Scale*BlockSize)
 	hqM := pixel.IM.Moved(hqPos).Scaled(hqPos, Scale)
 	if s.isHQDestroyed {
-		s.destroyedHQSprite.Draw(s.batch, hqM)
+		s.destroyedHQSprite.Draw(s.blocksBatch, hqM)
 	} else {
-		s.hqSprite.Draw(s.batch, hqM)
+		s.hqSprite.Draw(s.blocksBatch, hqM)
 	}
-	s.batch.Draw(win)
+	s.blocksBatch.Draw(win)
 	s.needsRedraw = false
 }
 
 func (s *Stage) DrawTrees(win *pixelgl.Window) {
-	s.treesBatch.Draw(win)
+	s.treesBlocksBatch.Draw(win)
 }
 
 func (s *Stage) CreateBot(tanks map[uuid.UUID]Tank, spritesheet pixel.Picture) *Bot {
@@ -218,8 +242,20 @@ func (s *Stage) IsPoolEmpty() bool {
 func (s *Stage) drawStaticBlocks() {
 	for _, blocks := range s.Blocks {
 		for _, block := range blocks {
-			if sprite, ok := s.blockSprites[block.kind]; ok && block.kind == TreesBlock {
-				sprite.Draw(s.treesBatch, pixel.IM.Moved(block.pos).Scaled(block.pos, Scale))
+			m := pixel.IM.Moved(block.pos).Scaled(block.pos, Scale)
+			if sprite, ok := s.staticBlockSprites[block.kind]; ok {
+				if block.kind == TreesBlock {
+					sprite.Draw(s.treesBlocksBatch, m)
+				}
+				if block.kind == BorderBlock {
+					sprite.Draw(s.staticBlocksBatch, m)
+				}
+			}
+			if block.kind == WaterBlock {
+				sprite1 := s.waterBlockSprites[0]
+				sprite2 := s.waterBlockSprites[1]
+				sprite1.Draw(s.water1BlocksBatch, m)
+				sprite2.Draw(s.water2BlocksBatch, m)
 			}
 		}
 	}
