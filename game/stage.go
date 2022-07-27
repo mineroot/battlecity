@@ -25,7 +25,6 @@ type Stage struct {
 	batch             *pixel.Batch
 	treesBatch        *pixel.Batch
 	needsRedraw       bool
-	treesDrawn        bool
 	botsPool          []BotType
 	botPoolIndex      int
 	isHQArmored       bool
@@ -97,6 +96,7 @@ func NewStage(spritesheet pixel.Picture, stagesConfigs embed.FS, stageNum int) *
 	stage.destroyedHQSprite = pixel.NewSprite(spritesheet, pixel.R(320, 208, 336, 224))
 	stage.needsRedraw = true
 	stage.initBotsPool(stageNum)
+	stage.drawStaticBlocks()
 	return stage
 }
 
@@ -152,7 +152,7 @@ func (s *Stage) Draw(win *pixelgl.Window) {
 	s.batch.Clear()
 	for _, blocks := range s.Blocks {
 		for _, block := range blocks {
-			if sprite, ok := s.blockSprites[block.kind]; ok {
+			if sprite, ok := s.blockSprites[block.kind]; ok && block.kind != TreesBlock {
 				sprite.Draw(s.batch, pixel.IM.Moved(block.pos).Scaled(block.pos, Scale))
 				if block.destroyable {
 					for i := 0; i < 2; i++ {
@@ -179,18 +179,7 @@ func (s *Stage) Draw(win *pixelgl.Window) {
 }
 
 func (s *Stage) DrawTrees(win *pixelgl.Window) {
-	if s.treesDrawn {
-		s.treesBatch.Draw(win)
-		return
-	}
-	for _, blocks := range s.Blocks {
-		for _, block := range blocks {
-			if sprite, ok := s.blockSprites[block.kind]; ok && block.kind == TreesBlock {
-				sprite.Draw(s.treesBatch, pixel.IM.Moved(block.pos).Scaled(block.pos, Scale))
-			}
-		}
-	}
-	s.treesDrawn = true
+	s.treesBatch.Draw(win)
 }
 
 func (s *Stage) CreateBot(tanks map[uuid.UUID]Tank, spritesheet pixel.Picture) *Bot {
@@ -224,6 +213,16 @@ func (s *Stage) CreateBot(tanks map[uuid.UUID]Tank, spritesheet pixel.Picture) *
 
 func (s *Stage) IsPoolEmpty() bool {
 	return s.botPoolIndex >= len(s.botsPool)
+}
+
+func (s *Stage) drawStaticBlocks() {
+	for _, blocks := range s.Blocks {
+		for _, block := range blocks {
+			if sprite, ok := s.blockSprites[block.kind]; ok && block.kind == TreesBlock {
+				sprite.Draw(s.treesBatch, pixel.IM.Moved(block.pos).Scaled(block.pos, Scale))
+			}
+		}
+	}
 }
 
 func (s *Stage) initBotsPool(stageNum int) {

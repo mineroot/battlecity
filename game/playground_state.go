@@ -204,7 +204,7 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 
 		if len(collidedDestroyableBlocks) != 0 {
 			if len(collidedDestroyableBlocks) > 2 {
-				panic("theoretically impossible")
+				panic("playground_state: theoretically impossible")
 			}
 
 			firstCollidedBlock := collidedDestroyableBlocks[0]
