@@ -7,5 +7,8 @@
 - [x] block and tank destruction animations 
 - [x] HQ drawing
 - [ ] full game circle (main menu, ~~stages loading~~, ~~playground~~, score board, game over)
-- [ ] sound effects
+- [x] sound effects
+- [ ] ice/trees stage blocks
+- [x] tank creation animation
+- [ ] all stages (1/35 done)
 - [ ] player two

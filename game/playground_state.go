@@ -222,7 +222,7 @@ func (s *PlaygroundState) Update(win *pixelgl.Window, dt float64) State {
 			s.stage.NeedsRedraw()
 		} else { // check collision between bullet and tanks
 			for id, tank := range tanks {
-				if tank.Side() != bullet.origin.Side() {
+				if tank.Side() != bullet.origin.Side() && !tank.OnCreation() {
 					tankRect := Rect(tank.Pos(), TankSize, TankSize)
 					intersect := bulletRect.Intersect(tankRect)
 					if intersect != pixel.ZR { // collision detected

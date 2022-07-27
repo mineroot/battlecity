@@ -17,10 +17,12 @@ type Player struct {
 	spritesheet         pixel.Picture
 	model               *utils.Animation
 	immunityModel       *utils.Animation
+	creationModel       *utils.Animation
 	pos                 pixel.Vec
 	speed               float64
 	direction           utils.Direction
 	immune              bool
+	onCreation          bool
 	immunityDuration    time.Duration
 	maxImmunityDuration time.Duration
 	bulletSpeed         float64
@@ -48,10 +50,29 @@ func NewPlayer(spritesheet pixel.Picture) *Player {
 			Duration: time.Millisecond * 40,
 		},
 	}, -1)
+	creationAnimationSprites := []*pixel.Sprite{
+		pixel.NewSprite(spritesheet, pixel.R(256, 144, 272, 160)),
+		pixel.NewSprite(spritesheet, pixel.R(272, 144, 288, 160)),
+		pixel.NewSprite(spritesheet, pixel.R(288, 144, 304, 160)),
+		pixel.NewSprite(spritesheet, pixel.R(304, 144, 320, 160)),
+	}
+	creationFramesSeq := []int{3, 2, 1, 0, 1, 2, 3, 2, 1, 0, 1, 2, 3}
+	creationFrames := make([]utils.AnimationFrame, len(creationFramesSeq))
+	creationAnimationDuration := time.Millisecond * 40
+	for i, creationFrameI := range creationFramesSeq {
+		creationFrames[i] = utils.AnimationFrame{
+			Frame:    creationAnimationSprites[creationFrameI],
+			Duration: creationAnimationDuration,
+		}
+	}
+	p.creationModel = utils.NewAnimation(creationFrames, 1)
 	return p
 }
 
 func (p *Player) Update(dt float64) {
+	if p.onCreation {
+		return
+	}
 	if p.immunityDuration >= p.maxImmunityDuration {
 		p.immune = false
 		p.immunityModel.Reset()
@@ -64,6 +85,7 @@ func (p *Player) Update(dt float64) {
 
 func (p *Player) Respawn() {
 	p.MakeImmune(time.Second * 3)
+	p.onCreation = true
 	p.pos = pixel.V(11*BlockSize*Scale, 3*BlockSize*Scale)
 	p.direction = utils.North
 	p.currentBullet1 = nil
@@ -100,6 +122,9 @@ func (p *Player) CalculateMovement(win *pixelgl.Window, dt float64) (pixel.Vec, 
 }
 
 func (p *Player) Shoot(win *pixelgl.Window, _ float64) *Bullet {
+	if p.onCreation {
+		return nil
+	}
 	now := time.Now()
 	if p.currentBullet1 != nil && p.currentBullet1.destroyed {
 		p.currentBullet1 = nil
@@ -139,6 +164,9 @@ func (p *Player) Shoot(win *pixelgl.Window, _ float64) *Bullet {
 }
 
 func (p *Player) Move(movementRes *MovementResult, _ float64) {
+	if p.onCreation {
+		return
+	}
 	p.direction = movementRes.direction
 	if movementRes.canMove {
 		p.pos = movementRes.newPos
@@ -167,39 +195,21 @@ func (p *Player) ResetLevel() {
 	p.changeLevel(0)
 }
 
-func (p *Player) changeLevel(level int) {
-	if level >= 4 {
-		panic("player: level out of bounds [0, 4)")
-	}
-	p.level = level
-
-	switch p.level {
-	case 0:
-		p.bulletSpeed = 100 * Scale
-		p.speed = 44 * Scale
-	default:
-		p.bulletSpeed = 200 * Scale
-		p.speed = 50 * Scale
-	}
-
-	minYStart, maxYStart := 240.0, 256.0
-	minY, maxY := minYStart-float64(p.level)*TankSize, maxYStart-float64(p.level)*TankSize
-	p.model = utils.NewAnimation([]utils.AnimationFrame{
-		{
-			Frame:    pixel.NewSprite(p.spritesheet, pixel.R(0, minY, 16, maxY)),
-			Duration: time.Microsecond * 66666,
-		},
-		{
-			Frame:    pixel.NewSprite(p.spritesheet, pixel.R(16, minY, 32, maxY)),
-			Duration: time.Microsecond * 66666,
-		},
-	}, -1)
-}
-
 func (p *Player) Draw(win *pixelgl.Window, dt float64, isPaused bool) {
 	immunityDt := dt
 	if isPaused {
 		dt = 0
+	}
+	if p.onCreation {
+		frame := p.creationModel.CurrentFrame(dt)
+		if frame != nil {
+			m := pixel.IM.Moved(p.pos).Scaled(p.pos, Scale)
+			frame.Draw(win, m)
+			return
+		} else {
+			p.onCreation = false
+			p.creationModel.Reset()
+		}
 	}
 	movementPressed := win.Pressed(pixelgl.KeyW) || win.Pressed(pixelgl.KeyD) ||
 		win.Pressed(pixelgl.KeyS) || win.Pressed(pixelgl.KeyA)
@@ -234,4 +244,37 @@ func (p *Player) Pos() pixel.Vec {
 
 func (p *Player) Direction() utils.Direction {
 	return p.direction
+}
+
+func (p *Player) OnCreation() bool {
+	return p.onCreation
+}
+
+func (p *Player) changeLevel(level int) {
+	if level >= 4 {
+		panic("player: level out of bounds [0, 4)")
+	}
+	p.level = level
+
+	switch p.level {
+	case 0:
+		p.bulletSpeed = 100 * Scale
+		p.speed = 44 * Scale
+	default:
+		p.bulletSpeed = 200 * Scale
+		p.speed = 50 * Scale
+	}
+
+	minYStart, maxYStart := 240.0, 256.0
+	minY, maxY := minYStart-float64(p.level)*TankSize, maxYStart-float64(p.level)*TankSize
+	p.model = utils.NewAnimation([]utils.AnimationFrame{
+		{
+			Frame:    pixel.NewSprite(p.spritesheet, pixel.R(0, minY, 16, maxY)),
+			Duration: time.Microsecond * 66666,
+		},
+		{
+			Frame:    pixel.NewSprite(p.spritesheet, pixel.R(16, minY, 32, maxY)),
+			Duration: time.Microsecond * 66666,
+		},
+	}, -1)
 }

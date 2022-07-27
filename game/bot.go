@@ -25,6 +25,7 @@ type Bot struct {
 	model            *utils.Animation
 	bonusModel       *utils.Animation
 	bonusModelPaused *utils.Animation
+	creationModel    *utils.Animation
 	pos              pixel.Vec
 	isBonus          bool
 	speed            float64
@@ -36,6 +37,7 @@ type Bot struct {
 	shootingInterval time.Duration
 	maxStuckInterval time.Duration
 	stuckTime        time.Duration
+	onCreation       bool
 }
 
 func NewBot(spritesheet pixel.Picture, botType BotType, pos pixel.Vec, isBonus bool) *Bot {
@@ -48,6 +50,7 @@ func NewBot(spritesheet pixel.Picture, botType BotType, pos pixel.Vec, isBonus b
 	b.maxStuckInterval = time.Millisecond * 300
 	b.stuckTime = 0
 	b.initBotType(spritesheet, botType)
+
 	return b
 }
 
@@ -93,6 +96,9 @@ func (b *Bot) CalculateMovement(_ *pixelgl.Window, dt float64) (pixel.Vec, utils
 }
 
 func (b *Bot) Move(movementRes *MovementResult, dt float64) {
+	if b.onCreation {
+		return
+	}
 	b.direction = movementRes.direction
 	if movementRes.canMove {
 		b.pos = movementRes.newPos
@@ -108,6 +114,9 @@ func (b *Bot) Move(movementRes *MovementResult, dt float64) {
 }
 
 func (b *Bot) Shoot(_ *pixelgl.Window, dt float64) *Bullet {
+	if b.onCreation {
+		return nil
+	}
 	const shootProb = 1 // 100% per second
 	now := time.Now()
 	canShoot := now.Sub(b.lastShootingTime) > b.shootingInterval
@@ -123,6 +132,16 @@ func (b *Bot) Shoot(_ *pixelgl.Window, dt float64) *Bullet {
 }
 
 func (b *Bot) Draw(win *pixelgl.Window, dt float64, isPaused bool) {
+	if b.onCreation {
+		frame := b.creationModel.CurrentFrame(dt)
+		if frame != nil {
+			m := pixel.IM.Moved(b.pos).Scaled(b.pos, Scale)
+			frame.Draw(win, m)
+			return
+		} else {
+			b.onCreation = false
+		}
+	}
 	var frame *pixel.Sprite
 	if b.isBonus {
 		if isPaused {
@@ -160,7 +179,28 @@ func (b *Bot) Direction() utils.Direction {
 	return b.direction
 }
 
+func (b *Bot) OnCreation() bool {
+	return b.onCreation
+}
+
 func (b *Bot) initBotType(spritesheet pixel.Picture, botType BotType) {
+	creationAnimationSprites := []*pixel.Sprite{
+		pixel.NewSprite(spritesheet, pixel.R(256, 144, 272, 160)),
+		pixel.NewSprite(spritesheet, pixel.R(272, 144, 288, 160)),
+		pixel.NewSprite(spritesheet, pixel.R(288, 144, 304, 160)),
+		pixel.NewSprite(spritesheet, pixel.R(304, 144, 320, 160)),
+	}
+	creationFramesSeq := []int{3, 2, 1, 0, 1, 2, 3, 2, 1, 0, 1, 2, 3}
+	creationFrames := make([]utils.AnimationFrame, len(creationFramesSeq))
+	creationAnimationDuration := time.Millisecond * 60
+	for i, creationFrameI := range creationFramesSeq {
+		creationFrames[i] = utils.AnimationFrame{
+			Frame:    creationAnimationSprites[creationFrameI],
+			Duration: creationAnimationDuration,
+		}
+	}
+	b.creationModel = utils.NewAnimation(creationFrames, 1)
+
 	var frames []utils.AnimationFrame
 	var speed, bulletSpeed float64
 	var hp int
@@ -244,4 +284,5 @@ func (b *Bot) initBotType(spritesheet pixel.Picture, botType BotType) {
 	}, -1)
 	b.speed, b.bulletSpeed = speed, bulletSpeed
 	b.hp = hp
+	b.onCreation = true
 }

@@ -28,6 +28,7 @@ type Tank interface {
 	CalculateMovement(win *pixelgl.Window, dt float64) (pixel.Vec, utils.Direction)
 	Move(movementRes *MovementResult, dt float64)
 	Shoot(win *pixelgl.Window, dt float64) *Bullet
+	OnCreation() bool
 }
 
 type MovementResult struct {
